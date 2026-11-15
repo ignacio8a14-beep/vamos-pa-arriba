@@ -426,14 +426,54 @@ app.delete('/api/archivos/:id', auth, wrap(async (req, res) => {
 // ---------- leer un estudio con IA (OpenAI) ----------
 // Solo extrae números de un InBody o un análisis de sangre. El usuario revisa todo antes de guardar.
 const CAMPOS_IA = {
-  ct: 'Colesterol total (mg/dL)', hdl: 'Colesterol HDL (mg/dL)', ldl: 'Colesterol LDL (mg/dL)', tg: 'Triglicéridos (mg/dL)',
-  glu: 'Glucosa en ayunas (mg/dL)', hba1c: 'Hemoglobina glicosilada (%)', crea: 'Creatinina (mg/dL)', tsh: 'TSH (µUI/mL)', au: 'Ácido úrico (mg/dL)',
-  ib_peso: 'Peso (kg)', ib_musculo: 'Masa muscular esquelética (kg)', ib_grasa_kg: 'Masa grasa corporal (kg)', ib_grasa_pct: 'Porcentaje de grasa corporal (%)',
-  ib_visceral: 'Nivel de grasa visceral', ib_agua: 'Agua corporal total (L)', ib_imc: 'IMC', ib_metab: 'Metabolismo basal / tasa metabólica basal (kcal)', ib_puntaje: 'Puntaje InBody',
+  gr: 'Hematíes en millones por mm³ (ej.: 5.780.000 por mm³ = 5.78)',
+  hto: 'Hematocrito (%)',
+  hb: 'Hemoglobina (g/dL; gr/100 ml es lo mismo)',
+  vcm: 'Volumen corpuscular medio (fL)',
+  hcm: 'Hemoglobina corpuscular media (pg)',
+  chcm: 'Concentración de hemoglobina corpuscular media (g/dL)',
+  ade: 'Anisocitosis, ADE o RDW (%)',
+  gb: 'Glóbulos blancos o leucocitos por mm³ (ej.: 6.600 = 6600)',
+  neu: 'Neutrófilos segmentados, porcentaje',
+  linf: 'Linfocitos, porcentaje',
+  mono: 'Monocitos, porcentaje',
+  eos: 'Eosinófilos, porcentaje',
+  baso: 'Basófilos, porcentaje',
+  plaq: 'Plaquetas por mm³ (ej.: 250.000 = 250000)',
+  vsg: 'Eritrosedimentación o VSG, primera hora (mm)',
+  glu: 'Glucemia o glucosa en ayunas en mg/dL (1,01 g/l = 101)',
+  hba1c: 'Hemoglobina glicosilada HbA1c (%)',
+  urea: 'Urea o uremia en mg/dL (0,28 g/l = 28)',
+  crea: 'Creatinina sérica (mg/dL; mg/100 ml es lo mismo)',
+  au: 'Ácido úrico o uricemia en mg/dL',
+  na: 'Sodio (mEq/L)',
+  k: 'Potasio (mEq/L)',
+  cl: 'Cloro (mEq/L)',
+  ct: 'Colesterol total (mg/dL)',
+  hdl: 'Colesterol HDL (mg/dL)',
+  ldl: 'Colesterol LDL (mg/dL)',
+  tg: 'Triglicéridos (mg/dL)',
+  ct_hdl: 'Relación o índice colesterol total / HDL',
+  bt: 'Bilirrubina total (mg/dL)',
+  bd: 'Bilirrubina directa (mg/dL)',
+  bi: 'Bilirrubina indirecta (mg/dL)',
+  got: 'Transaminasa glutámico oxalacética, GOT o AST (U/L; mU/ml es lo mismo)',
+  gpt: 'Transaminasa glutámico pirúvica, GPT o ALT (U/L; mU/ml es lo mismo)',
+  fal: 'Fosfatasa alcalina (U/L; mU/ml es lo mismo)',
+  ggt: 'Gamma glutamil transpeptidasa GGT (U/L)',
+  tsh: 'TSH o tirotrofina (µUI/mL; uU/ml es lo mismo)',
+  t4: 'T4 total o tiroxina total (µg/dL; ug/100 ml es lo mismo)',
+  t4l: 'T4 libre (ng/dL)',
+  pcr: 'Proteína C reactiva (mg/dL; mg % es lo mismo)',
+  vitd: 'Vitamina D 25-hidroxi (ng/mL)',
+  ferritina: 'Ferritina (ng/mL)',
+  psa: 'Antígeno prostático específico PSA total (ng/mL)',
+  ib_peso: 'InBody: peso (kg)', ib_musculo: 'InBody: masa muscular esquelética (kg)', ib_grasa_kg: 'InBody: masa grasa corporal (kg)', ib_grasa_pct: 'InBody: porcentaje de grasa corporal (%)',
+  ib_visceral: 'InBody: nivel de grasa visceral', ib_agua: 'InBody: agua corporal total (L)', ib_imc: 'InBody: IMC', ib_metab: 'InBody: metabolismo basal (kcal)', ib_puntaje: 'InBody: puntaje InBody',
 };
 const ESQUEMA_IA = {
   type: 'object', additionalProperties: false,
-  required: ['tipo', 'fecha', 'lugar', 'valores', 'notas'],
+  required: ['tipo', 'fecha', 'lugar', 'valores', 'referencias', 'orina', 'notas'],
   properties: {
     tipo: { type: 'string', enum: ['inbody', 'analisis', 'otro'] },
     fecha: { type: ['string', 'null'], description: 'Fecha del estudio en formato YYYY-MM-DD, o null' },
@@ -442,14 +482,28 @@ const ESQUEMA_IA = {
       type: 'object', additionalProperties: false, required: Object.keys(CAMPOS_IA),
       properties: Object.fromEntries(Object.entries(CAMPOS_IA).map(([k, d]) => [k, { type: ['number', 'null'], description: d }])),
     },
-    notas: { type: ['string', 'null'], description: 'Otros valores del informe que no están en la lista, en una línea corta, o null' },
+    referencias: {
+      type: 'array', description: 'Valor de referencia que imprime el laboratorio para cada valor encontrado',
+      items: { type: 'object', additionalProperties: false, required: ['clave', 'texto'],
+        properties: { clave: { type: 'string', enum: Object.keys(CAMPOS_IA) }, texto: { type: 'string', description: 'Ej.: "hasta 200", "70 a 110", "0,80 a 1,40"' } } },
+    },
+    orina: { type: ['string', 'null'], description: 'Si hay examen de orina, resumen corto de lo que dice (ej.: "Densidad 1.010, pH 6, sin proteínas ni glucosa, sedimento sin particularidades"), o null' },
+    notas: { type: ['string', 'null'], description: 'Otros valores numéricos del informe que no están en la lista, en una línea corta, o null' },
   },
 };
 const PROMPT_IA = `Eres un asistente que transcribe datos de informes de salud. Lee el documento adjunto (un análisis de sangre, un informe InBody u otro estudio) y devuelve SOLO los valores que aparecen escritos en él.
 Reglas:
 - No inventes ni estimes nada. Si un valor no aparece o no se lee con claridad, devuelve null.
-- Usa punto como separador decimal.
-- Si un valor aparece en una unidad distinta a la indicada (por ejemplo mmol/L en vez de mg/dL), devuelve null para ese valor.
+- En los informes argentinos el punto separa miles y la coma decimales: "5.780.000" = 5780000, "1,32" = 1.32. Devuelve los números con punto decimal.
+- Convierte a la unidad indicada en cada campo cuando la conversión es directa:
+  · g/l o g/L → mg/dL multiplicando por 100 (glucemia 1,01 g/l = 101; uremia 0,28 g/l = 28).
+  · mg/100 ml, mg/dl y mg % son lo mismo que mg/dL. gr/100 ml = g/dL. ug/100 ml = µg/dL.
+  · mU/ml, UI/L y U/L son lo mismo. uU/ml = µUI/mL. meq/l = mEq/L.
+  · Hematíes por mm³ → millones/mm³ (5.780.000 → 5.78).
+  · En la fórmula leucocitaria usa los porcentajes, no los valores absolutos.
+- Si la unidad es otra y no hay conversión directa (por ejemplo mmol/L), devuelve null.
+- "Glucemia" es la glucosa en ayunas. "Uremia" es la urea. "Segmentados" son los neutrófilos.
+- En referencias, copia el valor de referencia que el laboratorio imprime al lado de cada valor que encontraste (adultos), tal como está.
 - tipo: "inbody" si es un informe de composición corporal (InBody u otro bioimpedanciómetro), "analisis" si es un análisis de sangre, "otro" en cualquier otro caso.
 - No interpretes ni des recomendaciones médicas: solo transcribe.`;
 
@@ -509,8 +563,11 @@ app.post('/api/ia/leer', auth, wrap(async (req, res) => {
     const v = datos.valores && datos.valores[k];
     if (typeof v === 'number' && isFinite(v)) valores[k] = v;
   }
+  const refs = {};
+  (datos.referencias || []).forEach((x) => { if (x && CAMPOS_IA[x.clave] && x.texto) refs[x.clave] = String(x.texto).slice(0, 60); });
   res.json({
-    tipo: datos.tipo, valores,
+    tipo: datos.tipo, valores, refs,
+    orina: datos.orina ? String(datos.orina).slice(0, 400) : null,
     fecha: FECHA_RE.test(datos.fecha || '') ? datos.fecha : null,
     lugar: datos.lugar ? String(datos.lugar).slice(0, 80) : null,
     notas: datos.notas ? String(datos.notas).slice(0, 400) : null,

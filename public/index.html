@@ -420,16 +420,51 @@ const FRASES = [
 ];
 
 // Valores de laboratorio (referencias generales para adultos; tu médico es quien interpreta)
+// Valores de laboratorio. sec agrupa en el formulario. ok/medio: solo donde hay una referencia general clara;
+// para el resto se muestra la referencia que trae el propio laboratorio (datos.refs).
 const LAB = [
-  { k: 'ct', n: 'Colesterol total', u: 'mg/dL', ok: (v) => v < 200, medio: (v) => v < 240, ref: '< 200' },
-  { k: 'hdl', n: 'HDL (bueno)', u: 'mg/dL', ok: (v) => v >= 40, medio: () => false, ref: '≥ 40' },
-  { k: 'ldl', n: 'LDL', u: 'mg/dL', ok: (v) => v < 130, medio: (v) => v < 160, ref: '< 130' },
-  { k: 'tg', n: 'Triglicéridos', u: 'mg/dL', ok: (v) => v < 150, medio: (v) => v < 200, ref: '< 150' },
-  { k: 'glu', n: 'Glucosa en ayunas', u: 'mg/dL', ok: (v) => v >= 70 && v < 100, medio: (v) => v < 126, ref: '70 – 99' },
-  { k: 'hba1c', n: 'Hemoglobina glicosilada', u: '%', ok: (v) => v < 5.7, medio: (v) => v < 6.5, ref: '< 5,7' },
-  { k: 'crea', n: 'Creatinina', u: 'mg/dL', ok: (v) => v >= 0.7 && v <= 1.3, medio: (v) => v <= 1.5, ref: '0,7 – 1,3' },
-  { k: 'tsh', n: 'TSH', u: 'µUI/mL', ok: (v) => v >= 0.4 && v <= 4, medio: () => false, ref: '0,4 – 4,0' },
-  { k: 'au', n: 'Ácido úrico', u: 'mg/dL', ok: (v) => v <= 7, medio: (v) => v <= 8, ref: '≤ 7' },
+  { k: 'gr', sec: 'Hemograma', n: 'Glóbulos rojos (hematíes)', u: 'millones/mm³', ref: '' },
+  { k: 'hto', sec: 'Hemograma', n: 'Hematocrito', u: '%', ref: '' },
+  { k: 'hb', sec: 'Hemograma', n: 'Hemoglobina', u: 'g/dL', ref: '' },
+  { k: 'vcm', sec: 'Hemograma', n: 'Volumen corpuscular medio (VCM)', u: 'fL', ref: '' },
+  { k: 'hcm', sec: 'Hemograma', n: 'Hemoglobina corpuscular media (HCM)', u: 'pg', ref: '' },
+  { k: 'chcm', sec: 'Hemograma', n: 'Concentración de Hb corpuscular (CHCM)', u: 'g/dL', ref: '' },
+  { k: 'ade', sec: 'Hemograma', n: 'Anisocitosis (ADE / RDW)', u: '%', ref: '' },
+  { k: 'gb', sec: 'Hemograma', n: 'Glóbulos blancos', u: '/mm³', ref: '' },
+  { k: 'neu', sec: 'Hemograma', n: 'Neutrófilos segmentados', u: '%', ref: '' },
+  { k: 'linf', sec: 'Hemograma', n: 'Linfocitos', u: '%', ref: '' },
+  { k: 'mono', sec: 'Hemograma', n: 'Monocitos', u: '%', ref: '' },
+  { k: 'eos', sec: 'Hemograma', n: 'Eosinófilos', u: '%', ref: '' },
+  { k: 'baso', sec: 'Hemograma', n: 'Basófilos', u: '%', ref: '' },
+  { k: 'plaq', sec: 'Hemograma', n: 'Plaquetas', u: '/mm³', ref: '' },
+  { k: 'vsg', sec: 'Hemograma', n: 'Eritrosedimentación (1ª hora)', u: 'mm', ref: '' },
+  { k: 'glu', sec: 'Glucemia y riñón', n: 'Glucemia (glucosa en ayunas)', u: 'mg/dL', ok: (v) => v >= 70 && v < 100, medio: (v) => v < 126, ref: '70 – 99' },
+  { k: 'hba1c', sec: 'Glucemia y riñón', n: 'Hemoglobina glicosilada (HbA1c)', u: '%', ok: (v) => v < 5.7, medio: (v) => v < 6.5, ref: '< 5,7' },
+  { k: 'urea', sec: 'Glucemia y riñón', n: 'Urea (uremia)', u: 'mg/dL', ref: '' },
+  { k: 'crea', sec: 'Glucemia y riñón', n: 'Creatinina', u: 'mg/dL', ref: '' },
+  { k: 'au', sec: 'Glucemia y riñón', n: 'Ácido úrico', u: 'mg/dL', ok: (v) => v <= 7, medio: (v) => v <= 8, ref: '≤ 7' },
+  { k: 'na', sec: 'Ionograma', n: 'Sodio', u: 'mEq/L', ref: '' },
+  { k: 'k', sec: 'Ionograma', n: 'Potasio', u: 'mEq/L', ref: '' },
+  { k: 'cl', sec: 'Ionograma', n: 'Cloro', u: 'mEq/L', ref: '' },
+  { k: 'ct', sec: 'Perfil lipídico', n: 'Colesterol total', u: 'mg/dL', ok: (v) => v < 200, medio: (v) => v < 240, ref: '< 200' },
+  { k: 'hdl', sec: 'Perfil lipídico', n: 'Colesterol HDL (bueno)', u: 'mg/dL', ok: (v) => v >= 40, medio: (v) => false, ref: '≥ 40' },
+  { k: 'ldl', sec: 'Perfil lipídico', n: 'Colesterol LDL', u: 'mg/dL', ok: (v) => v < 130, medio: (v) => v < 160, ref: '< 130' },
+  { k: 'tg', sec: 'Perfil lipídico', n: 'Triglicéridos', u: 'mg/dL', ok: (v) => v < 150, medio: (v) => v < 200, ref: '< 150' },
+  { k: 'ct_hdl', sec: 'Perfil lipídico', n: 'Relación colesterol total / HDL', u: '', ref: '' },
+  { k: 'bt', sec: 'Hepatograma', n: 'Bilirrubina total', u: 'mg/dL', ref: '' },
+  { k: 'bd', sec: 'Hepatograma', n: 'Bilirrubina directa', u: 'mg/dL', ref: '' },
+  { k: 'bi', sec: 'Hepatograma', n: 'Bilirrubina indirecta', u: 'mg/dL', ref: '' },
+  { k: 'got', sec: 'Hepatograma', n: 'GOT / AST (transaminasa oxalacética)', u: 'U/L', ref: '' },
+  { k: 'gpt', sec: 'Hepatograma', n: 'GPT / ALT (transaminasa pirúvica)', u: 'U/L', ref: '' },
+  { k: 'fal', sec: 'Hepatograma', n: 'Fosfatasa alcalina', u: 'U/L', ref: '' },
+  { k: 'ggt', sec: 'Hepatograma', n: 'Gamma GT (GGT)', u: 'U/L', ref: '' },
+  { k: 'tsh', sec: 'Tiroides', n: 'TSH (tirotrofina)', u: 'µUI/mL', ref: '' },
+  { k: 't4', sec: 'Tiroides', n: 'T4 total (tiroxina)', u: 'µg/dL', ref: '' },
+  { k: 't4l', sec: 'Tiroides', n: 'T4 libre', u: 'ng/dL', ref: '' },
+  { k: 'pcr', sec: 'Otros', n: 'Proteína C reactiva (PCR)', u: 'mg/dL', ref: '' },
+  { k: 'vitd', sec: 'Otros', n: 'Vitamina D (25-OH)', u: 'ng/mL', ref: '' },
+  { k: 'ferritina', sec: 'Otros', n: 'Ferritina', u: 'ng/mL', ref: '' },
+  { k: 'psa', sec: 'Otros', n: 'PSA total', u: 'ng/mL', ref: '' },
 ];
 
 // Composición corporal (InBody). mejor: 'baja' o 'sube' indica hacia dónde conviene que vaya
@@ -744,6 +779,8 @@ function htmlCampo(c, datos) {
     const v = datos[c.k] ?? c.def ?? '';
     const id = 'c_' + c.k;
     if (c.t === 'titulo') return `<h3 class="mt">${c.l}</h3>`;
+    if (c.t === 'subtitulo') return `<p class="mt mb0" style="font-weight:700;color:var(--verde);border-bottom:1px solid var(--borde);padding-bottom:4px">${c.l}</p>`;
+    if (c.t === 'nota') return `<p class="mut mb0"><small>${c.l}</small></p>`;
     if (c.t === 'textarea') return `<label class="f">${c.l}</label><textarea class="i" id="${id}" placeholder="${esc(c.ph || '')}">${esc(v)}</textarea>`;
     if (c.t === 'select') return `<label class="f">${c.l}</label><select class="i" id="${id}">${c.op.map((o) => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
     if (c.t === 'check') return `<label class="check ${v ? 'ok' : ''}" style="border:none" onclick="this.classList.toggle('ok')" data-k="${c.k}" id="${id}"><span class="caja">✓</span><span>${c.l}</span></label>`;
@@ -755,7 +792,7 @@ function htmlCampo(c, datos) {
 function leerCampos(campos, raiz) {
   const out = {};
   campos.forEach((c) => {
-    if (c.t === 'titulo') return;
+    if (c.t === 'titulo' || c.t === 'subtitulo' || c.t === 'nota') return;
     const el = $('#c_' + c.k, raiz);
     if (!el) return;
     if (c.t === 'check') out[c.k] = el.classList.contains('ok');
@@ -899,6 +936,8 @@ function llenarConIA(o, r) {
   if (r.fecha) { const f = $('#c_fecha', o); f.value = r.fecha; marcar(f); }
   const lugar = $('#c_lugar', o); if (r.lugar && lugar && !lugar.value) { lugar.value = r.lugar; marcar(lugar); }
   const res = $('#c_resultado', o); if (r.notas && res && !res.value) { res.value = 'Otros valores: ' + r.notas; marcar(res); }
+  const ori = $('#c_orina', o); if (r.orina && ori) { ori.value = r.orina; marcar(ori); }
+  o._extraIA = { refs: { ...((o._extraIA || {}).refs || {}), ...(r.refs || {}) } };
   const aviso = $('[data-aviso-ia]', o);
   if (aviso) aviso.innerHTML = n
     ? `<div class="nota" style="border-color:var(--verde)">✨ La IA completó <b>${n} valores</b> (resaltados). <b>Revísalos con el informe</b> antes de guardar.${r.restantes >= 0 ? ` Te quedan ${r.restantes} lecturas este mes.` : ''}</div>`
@@ -943,6 +982,9 @@ function formRegistro(tipo, titulo, campos, existente, alGuardar) {
       // no guardar valores de grupos ocultos (ej.: campos de InBody en un análisis de sangre)
       if (selTipo) todos.forEach((c) => { if (c.g && GRUPO_POR_TIPO[c.g] !== v.tipo) delete v[c.k]; });
       const fecha = v.fecha || hoyStr(); delete v.fecha;
+      // conservar datos que no son campos del formulario (ej.: referencias del laboratorio)
+      const extras = Object.fromEntries(Object.entries((existente && existente.datos) || {}).filter(([k]) => !todos.some((c) => c.k === k)));
+      Object.assign(v, { ...extras, ...(o._extraIA || {}), ...v });
       const btn = $('[data-ok]', o); btn.disabled = true;
       try {
         if (existente) await editarRegistro(existente.id, tipo, fecha, v);
@@ -1895,7 +1937,13 @@ const CAMPOS = {
     { k: 'tipo', l: 'Tipo de estudio', t: 'select', op: ['Análisis de sangre', 'Composición corporal (InBody)', 'Ecocardiograma', 'Electrocardiograma', 'Ecografía', 'Estudio del sueño', 'Imagen (RX, TAC, RMN)', 'Otro'] },
     { k: 'lugar', l: 'Lugar / laboratorio', t: 'text' },
     { t: 'titulo', l: 'Valores del análisis', g: 'lab' },
-    ...LAB.map((v) => ({ k: v.k, l: `${v.n} (${v.u})`, t: 'number', g: 'lab' })),
+    { t: 'nota', l: 'Completa solo los que figuran en tu informe. Los demás déjalos vacíos.', g: 'lab' },
+    ...LAB.flatMap((v, i) => [
+      ...(i === 0 || LAB[i - 1].sec !== v.sec ? [{ t: 'subtitulo', l: v.sec, g: 'lab' }] : []),
+      { k: v.k, l: v.n + (v.u ? ` (${v.u})` : ''), t: 'number', g: 'lab' },
+    ]),
+    { t: 'subtitulo', l: 'Orina', g: 'lab' },
+    { k: 'orina', l: 'Examen de orina (resumen)', t: 'textarea', g: 'lab', ph: 'Ej.: sin proteínas ni glucosa, sedimento normal' },
     { t: 'titulo', l: 'Valores del InBody', g: 'inbody' },
     ...INBODY.map((v) => ({ k: v.k, l: v.n + (v.u ? ` (${v.u})` : ''), t: 'number', g: 'inbody' })),
     { k: 'resultado', l: 'Resultado / conclusión del informe', t: 'textarea' },
@@ -1910,9 +1958,9 @@ function horasSueno(d) {
   return Math.max(0, (m - (d.tardo || 0)) / 60);
 }
 function estadoLab(def, v) {
-  if (v === null || v === undefined || v === '') return '';
+  if (v === null || v === undefined || v === '' || !def.ok) return '';
   if (def.ok(v)) return '<span class="badge">OK</span>';
-  if (def.medio(v)) return '<span class="badge medio">Revisar</span>';
+  if (def.medio && def.medio(v)) return '<span class="badge medio">Revisar</span>';
   return '<span class="badge alto">Fuera de rango</span>';
 }
 function sparkline(vals, w = 300, h = 60) {
@@ -1951,7 +1999,7 @@ async function vistaSalud() {
       <div class="card centro"><div class="big">${ej.filter((r) => difDias(hoy, r.fecha) < 30).reduce((a, r) => a + (Number(r.datos.minutos) || 0), 0)}</div><small>min de ejercicio (30 días)</small></div>
     </div>
     ${ult ? `<div class="card"><h3>🧪 Último análisis (${fechaCorta(ult.fecha)})</h3><table class="val"><tr><th>Valor</th><th>Resultado</th><th>Ref.</th><th></th></tr>
-      ${LAB.filter((v) => ult.datos[v.k] != null).map((v) => `<tr><td>${v.n}</td><td><b>${ult.datos[v.k]}</b></td><td><small>${v.ref}</small></td><td>${estadoLab(v, ult.datos[v.k])}</td></tr>`).join('')}</table></div>` : ''}
+      ${LAB.filter((v) => ult.datos[v.k] != null).map((v) => `<tr><td>${v.n}</td><td><b>${ult.datos[v.k]}</b></td><td><small>${esc((ult.datos.refs || {})[v.k] || v.ref)}</small></td><td>${estadoLab(v, ult.datos[v.k])}</td></tr>`).join('')}</table></div>` : ''}
     ${uib ? `<div class="card"><h3>⚖️ Último InBody (${fechaCorta(uib.fecha)})</h3><table class="val">${INBODY.filter((v) => uib.datos[v.k] != null).map((v) => `<tr><td>${v.n}</td><td><b>${uib.datos[v.k]}</b> ${v.u}</td></tr>`).join('')}</table></div>` : ''}
     <button class="btn full" id="res-med">📤 Generar resumen para llevar al médico</button>
     <div class="nota">Las referencias son generales para adultos. Quien interpreta tus valores es tu médico.</div>`;
@@ -1963,7 +2011,7 @@ async function vistaSalud() {
         if (perfil().edad) L.push(`Edad: ${perfil().edad} · Altura: ${perfil().altura || '?'} cm`);
         if (p) L.push(`Peso: ${p.datos.peso} kg${p.datos.cintura ? ' · Cintura: ' + p.datos.cintura + ' cm' : ''}${p.datos.presion ? ' · Presión: ' + p.datos.presion : ''} (${fechaCorta(p.fecha)})`);
         if (uib) { L.push(`\nÚltimo InBody (${fechaCorta(uib.fecha)}):`); INBODY.forEach((v) => uib.datos[v.k] != null && L.push(`• ${v.n}: ${uib.datos[v.k]} ${v.u}`)); }
-        if (ult) { L.push(`\nÚltimo análisis (${fechaCorta(ult.fecha)}):`); LAB.forEach((v) => ult.datos[v.k] != null && L.push(`• ${v.n}: ${ult.datos[v.k]} ${v.u}`)); }
+        if (ult) { L.push(`\nÚltimo análisis (${fechaCorta(ult.fecha)}):`); LAB.forEach((v) => ult.datos[v.k] != null && L.push(`• ${v.n}: ${ult.datos[v.k]} ${v.u}${(ult.datos.refs || {})[v.k] ? ` (ref.: ${ult.datos.refs[v.k]})` : ''}`)); if (ult.datos.orina) L.push(`• Orina: ${ult.datos.orina}`); }
         if (s14.length) {
           L.push(`\nSueño (últimas ${s14.length} noches registradas):`);
           if (hs.length) L.push(`• Horas promedio: ${prom(hs).toFixed(1)}`);
@@ -1992,7 +2040,7 @@ async function vistaSalud() {
     const linea = {
       estudio: (r) => `<b>${esc(r.datos.tipo)}</b>${r.datos.lugar ? ' · ' + esc(r.datos.lugar) : ''}${r.adjuntos ? ` <span class="badge">📎 ${r.adjuntos}</span>` : ''}<br><small>${r.datos.resultado ? esc(r.datos.resultado.slice(0, 100))
         : ES_INBODY(r) ? [r.datos.ib_peso != null && `Peso ${r.datos.ib_peso} kg`, r.datos.ib_grasa_pct != null && `Grasa ${r.datos.ib_grasa_pct}%`, r.datos.ib_musculo != null && `Músculo ${r.datos.ib_musculo} kg`].filter(Boolean).join(' · ')
-        : LAB.filter((v) => r.datos[v.k] != null).map((v) => v.n.split(' ')[0] + ' ' + r.datos[v.k]).join(' · ')}</small>`,
+        : (() => { const vs = LAB.filter((v) => r.datos[v.k] != null); return vs.slice(0, 5).map((v) => v.n.split(' (')[0] + ' ' + r.datos[v.k]).join(' · ') + (vs.length > 5 ? ` · y ${vs.length - 5} valores más` : ''); })()}</small>`,
       consulta: (r) => `<b>${esc(r.datos.especialidad)}</b>${r.datos.profesional ? ' · ' + esc(r.datos.profesional) : ''}${r.adjuntos ? ` <span class="badge">📎 ${r.adjuntos}</span>` : ''}<br><small>${esc((r.datos.dijo || r.datos.motivo || '').slice(0, 100))}</small>`,
       psicologo: (r) => `<b>Sesión</b> ${r.datos.animo ? ANIMOS[r.datos.animo - 1] : ''}<br><small>${esc((r.datos.aprendi || r.datos.temas || '').slice(0, 100))}</small>${r.datos.tarea ? `<br><small>📝 ${esc(r.datos.tarea.slice(0, 80))}</small>` : ''}`,
       sueno: (r) => { const h = horasSueno(r.datos); return `<b>${h !== null ? h.toFixed(1) + ' h' : '—'}</b> · ${r.datos.despertares ?? '?'} despertares ${r.datos.calidad ? ['😫', '😴', '😐', '🙂', '😃'][r.datos.calidad - 1] : ''}<br><small>${[r.datos.ronque && 'ronquido', r.datos.boca_seca && 'boca seca', r.datos.pausas && 'pausas'].filter(Boolean).join(' · ')}</small>`; },
@@ -2021,7 +2069,7 @@ async function vistaSalud() {
           ${LAB.filter((v) => a.datos[v.k] != null || b.datos[v.k] != null).map((v) => {
             const va = a.datos[v.k], vb = b.datos[v.k];
             const fl = va != null && vb != null ? (va < vb ? '↓' : va > vb ? '↑' : '=') : '';
-            return `<tr><td>${v.n}</td><td>${vb ?? '—'}</td><td><b>${va ?? '—'}</b> ${fl}</td><td>${estadoLab(v, va)}</td></tr>`;
+            return `<tr><td>${v.n}${(a.datos.refs || {})[v.k] ? `<br><small class="mut">ref. ${esc(a.datos.refs[v.k])}</small>` : ''}</td><td>${vb ?? '—'}</td><td><b>${va ?? '—'}</b> ${fl}</td><td>${estadoLab(v, va)}</td></tr>`;
           }).join('')}</table></div>`;
       }
     }
