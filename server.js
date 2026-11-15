@@ -8,6 +8,9 @@
 //   MAIL_FROM        remitente, ej.: Vamos Pa' Arriba <no-reply@i8aproject.com>
 //   SOPORTE_EMAIL    email de contacto que se muestra en la app y en la privacidad
 //   APP_URL          opcional, ej.: https://vamospaarriba.i8aproject.com
+//   OPENAI_API_KEY   opcional: activa "Completar con IA" (leer PDF o foto de un estudio)
+//   OPENAI_MODEL     opcional, modelo a usar (por defecto gpt-5-mini)
+//   IA_LIMITE_MES    opcional, lecturas con IA por usuario por mes (por defecto 10)
 //   PORT             opcional, por defecto 3000
 
 const express = require('express');
@@ -28,6 +31,10 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const MAIL_FROM = process.env.MAIL_FROM || "Vamos Pa' Arriba <no-reply@i8aproject.com>";
 const SOPORTE_EMAIL = process.env.SOPORTE_EMAIL || '';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
+const OPENAI_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+const IA_LIMITE_MES = parseInt(process.env.IA_LIMITE_MES, 10) || 10;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -48,7 +55,8 @@ app.use((req, res, next) => {
 // Los adjuntos viajan en base64: esa ruta acepta cuerpos más grandes
 const jsonNormal = express.json({ limit: '2mb' });
 const jsonGrande = express.json({ limit: '15mb' });
-app.use((req, res, next) => (req.method === 'POST' && req.path === '/api/archivos' ? jsonGrande : jsonNormal)(req, res, next));
+const RUTAS_GRANDES = ['/api/archivos', '/api/ia/leer'];
+app.use((req, res, next) => (req.method === 'POST' && RUTAS_GRANDES.includes(req.path) ? jsonGrande : jsonNormal)(req, res, next));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ---------- helpers ----------
@@ -115,6 +123,8 @@ app.get('/api/config', (req, res) => res.json({
   registroConCodigo: !!REGISTRO_CODIGO,
   recuperar: !!RESEND_API_KEY,
   soporte: SOPORTE_EMAIL,
+  ia: !!OPENAI_API_KEY,
+  iaLimite: IA_LIMITE_MES,
 }));
 
 // ---------- auth ----------
@@ -248,6 +258,7 @@ app.get('/api/admin/estadisticas', auth, wrap(async (req, res) => {
     activos30: await q("SELECT count(*) n FROM usuarios WHERE ultimo_acceso > now() - interval '30 days'"),
     familias: await q('SELECT count(*) n FROM familias'),
     registros30: await q("SELECT count(*) n FROM registros WHERE creado > now() - interval '30 days'"),
+    ia30: await q("SELECT count(*) n FROM ia_usos WHERE creado > now() - interval '30 days'"),
   });
 }));
 
@@ -410,6 +421,101 @@ app.get('/api/archivos/:id', auth, wrap(async (req, res) => {
 app.delete('/api/archivos/:id', auth, wrap(async (req, res) => {
   await pool.query('DELETE FROM archivos WHERE id=$1 AND usuario_id=$2', [req.params.id, req.uid]);
   res.json({ ok: true });
+}));
+
+// ---------- leer un estudio con IA (OpenAI) ----------
+// Solo extrae números de un InBody o un análisis de sangre. El usuario revisa todo antes de guardar.
+const CAMPOS_IA = {
+  ct: 'Colesterol total (mg/dL)', hdl: 'Colesterol HDL (mg/dL)', ldl: 'Colesterol LDL (mg/dL)', tg: 'Triglicéridos (mg/dL)',
+  glu: 'Glucosa en ayunas (mg/dL)', hba1c: 'Hemoglobina glicosilada (%)', crea: 'Creatinina (mg/dL)', tsh: 'TSH (µUI/mL)', au: 'Ácido úrico (mg/dL)',
+  ib_peso: 'Peso (kg)', ib_musculo: 'Masa muscular esquelética (kg)', ib_grasa_kg: 'Masa grasa corporal (kg)', ib_grasa_pct: 'Porcentaje de grasa corporal (%)',
+  ib_visceral: 'Nivel de grasa visceral', ib_agua: 'Agua corporal total (L)', ib_imc: 'IMC', ib_metab: 'Metabolismo basal / tasa metabólica basal (kcal)', ib_puntaje: 'Puntaje InBody',
+};
+const ESQUEMA_IA = {
+  type: 'object', additionalProperties: false,
+  required: ['tipo', 'fecha', 'lugar', 'valores', 'notas'],
+  properties: {
+    tipo: { type: 'string', enum: ['inbody', 'analisis', 'otro'] },
+    fecha: { type: ['string', 'null'], description: 'Fecha del estudio en formato YYYY-MM-DD, o null' },
+    lugar: { type: ['string', 'null'], description: 'Laboratorio o centro, o null' },
+    valores: {
+      type: 'object', additionalProperties: false, required: Object.keys(CAMPOS_IA),
+      properties: Object.fromEntries(Object.entries(CAMPOS_IA).map(([k, d]) => [k, { type: ['number', 'null'], description: d }])),
+    },
+    notas: { type: ['string', 'null'], description: 'Otros valores del informe que no están en la lista, en una línea corta, o null' },
+  },
+};
+const PROMPT_IA = `Eres un asistente que transcribe datos de informes de salud. Lee el documento adjunto (un análisis de sangre, un informe InBody u otro estudio) y devuelve SOLO los valores que aparecen escritos en él.
+Reglas:
+- No inventes ni estimes nada. Si un valor no aparece o no se lee con claridad, devuelve null.
+- Usa punto como separador decimal.
+- Si un valor aparece en una unidad distinta a la indicada (por ejemplo mmol/L en vez de mg/dL), devuelve null para ese valor.
+- tipo: "inbody" si es un informe de composición corporal (InBody u otro bioimpedanciómetro), "analisis" si es un análisis de sangre, "otro" en cualquier otro caso.
+- No interpretes ni des recomendaciones médicas: solo transcribe.`;
+
+app.post('/api/ia/leer', auth, wrap(async (req, res) => {
+  if (!OPENAI_API_KEY) return res.status(503).json({ error: 'La lectura con IA no está activada' });
+  const u = await pool.query("SELECT perfil->>'consentIA' AS c FROM usuarios WHERE id=$1", [req.uid]);
+  if (u.rows[0].c !== 'true') return res.status(403).json({ error: 'Primero tienes que aceptar el uso de la IA' });
+  const usos = await pool.query("SELECT count(*)::int n FROM ia_usos WHERE usuario_id=$1 AND ok AND creado > date_trunc('month', now())", [req.uid]);
+  if (usos.rows[0].n >= IA_LIMITE_MES) return res.status(429).json({ error: `Llegaste al límite de ${IA_LIMITE_MES} lecturas con IA de este mes` });
+
+  // El archivo puede venir de un adjunto ya guardado o directo (registro nuevo todavía sin guardar)
+  let tipo, nombre, base64;
+  const { archivo_id } = req.body || {};
+  if (archivo_id) {
+    const a = await pool.query('SELECT nombre, tipo, datos FROM archivos WHERE id=$1 AND usuario_id=$2', [archivo_id, req.uid]);
+    if (!a.rowCount) return res.status(404).json({ error: 'Archivo no encontrado' });
+    ({ nombre, tipo } = a.rows[0]); base64 = a.rows[0].datos.toString('base64');
+  } else {
+    ({ nombre, tipo, base64 } = req.body || {});
+    if (!TIPOS_ARCHIVO.includes(tipo) || !base64) return res.status(400).json({ error: 'Archivo inválido' });
+    if (Buffer.byteLength(base64, 'base64') > MAX_ARCHIVO) return res.status(400).json({ error: 'El archivo supera los 10 MB' });
+  }
+  const dataUrl = `data:${tipo};base64,${base64}`;
+  const parteArchivo = tipo === 'application/pdf'
+    ? { type: 'input_file', filename: nombre || 'estudio.pdf', file_data: dataUrl }
+    : { type: 'input_image', image_url: dataUrl };
+
+  let r, cuerpo;
+  try {
+    r = await fetch(OPENAI_URL + '/responses', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + OPENAI_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        input: [{ role: 'user', content: [parteArchivo, { type: 'input_text', text: PROMPT_IA }] }],
+        text: { format: { type: 'json_schema', name: 'estudio', strict: true, schema: ESQUEMA_IA } },
+        store: false,
+      }),
+    });
+    cuerpo = await r.json();
+  } catch (e) {
+    console.error('OpenAI', e.message);
+    return res.status(502).json({ error: 'No se pudo conectar con la IA. Prueba de nuevo en un rato.' });
+  }
+  if (!r.ok) {
+    console.error('OpenAI', r.status, JSON.stringify(cuerpo).slice(0, 500));
+    await pool.query('INSERT INTO ia_usos (usuario_id, ok) VALUES ($1, false)', [req.uid]);
+    return res.status(502).json({ error: r.status === 429 ? 'La IA está ocupada o sin crédito. Avisa a soporte.' : 'La IA no pudo leer el archivo.' });
+  }
+  const texto = (cuerpo.output || []).flatMap((o) => o.content || []).find((c) => c.type === 'output_text');
+  let datos;
+  try { datos = JSON.parse(texto.text); } catch { return res.status(502).json({ error: 'La IA no devolvió datos legibles. Prueba con otra foto o el PDF.' }); }
+  await pool.query('INSERT INTO ia_usos (usuario_id) VALUES ($1)', [req.uid]);
+  // Limpieza: solo números válidos y fecha con formato correcto
+  const valores = {};
+  for (const k of Object.keys(CAMPOS_IA)) {
+    const v = datos.valores && datos.valores[k];
+    if (typeof v === 'number' && isFinite(v)) valores[k] = v;
+  }
+  res.json({
+    tipo: datos.tipo, valores,
+    fecha: FECHA_RE.test(datos.fecha || '') ? datos.fecha : null,
+    lugar: datos.lugar ? String(datos.lugar).slice(0, 80) : null,
+    notas: datos.notas ? String(datos.notas).slice(0, 400) : null,
+    restantes: IA_LIMITE_MES - usos.rows[0].n - 1,
+  });
 }));
 
 // ---------- SPA ----------

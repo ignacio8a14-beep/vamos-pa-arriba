@@ -107,6 +107,7 @@ table.val th{color:var(--gris);font-weight:600;font-size:.8rem}
 .landing{max-width:560px;margin:0 auto}
 .landing .card.mb0 b{display:block;margin-top:2px}
 .legal h3{margin-top:14px}.legal p{font-size:.95rem}
+.ia-lleno{background:#fff8dc!important;border-color:var(--ambar)!important}
 .nota{font-size:.85rem;color:var(--gris);background:#fff;border-left:3px solid var(--ambar);padding:8px 10px;border-radius:8px;margin:8px 0}
 .prog{height:10px;background:var(--borde);border-radius:999px;overflow:hidden}
 .prog div{height:100%;background:var(--verde);transition:width .3s}
@@ -556,7 +557,7 @@ function salir() {
 function textoLegal(cual) {
   const contacto = S.config.soporte ? `<a href="mailto:${esc(S.config.soporte)}">${esc(S.config.soporte)}</a>` : 'el email de soporte informado en la app';
   if (cual === 'privacidad') return `
-    <h2>Política de privacidad</h2><p class="mut">Versión 1 · noviembre de 2026</p>
+    <h2>Política de privacidad</h2><p class="mut">Versión 2 · noviembre de 2026</p>
     <h3>¿Quién es responsable de tus datos?</h3>
     <p>I8A Project, con domicilio en Junín, provincia de Buenos Aires, Argentina. Contacto: ${contacto}.</p>
     <h3>¿Qué datos guardamos?</h3>
@@ -564,8 +565,10 @@ function textoLegal(cual) {
     <b>Lo que tú decides cargar:</b> hábitos, comidas, ejercicio, sueño, peso, estudios médicos, consultas, sesiones de psicología, momentos de ansiedad, oraciones y notas. Parte de esto son <b>datos de salud</b>, que la Ley 25.326 considera datos sensibles.</p>
     <p>Cargar datos de salud es <b>siempre voluntario</b>: nadie puede obligarte a darlos y puedes usar la app sin cargarlos.</p>
     <h3>¿Para qué los usamos?</h3>
-    <p>Solo para que la app funcione para ti: mostrarte tu información, armar tu plan de comidas y tus resúmenes. <b>No vendemos, no alquilamos ni cedemos tus datos</b>, y no los usamos para publicidad.</p>
+    <p>Solo para que la app funcione para ti: mostrarte tu información, armar tu plan de comidas y tus resúmenes. <b>No vendemos, no alquilamos ni cedemos tus datos</b>, y no los usamos para publicidad. La única excepción es la lectura con IA, solo si tú la activas (ver más abajo).</p>
     <p>Para mejorar el servicio podemos ver cifras generales sin identificar a nadie (por ejemplo, cuántas personas usan la app).</p>
+    <h3>Lectura de estudios con IA (opcional)</h3>
+    <p>Si activas "Completar con IA", cada vez que tocas <b>✨ Leer</b> el archivo elegido se envía a OpenAI, un proveedor externo, únicamente para transcribir los valores del estudio. Solo se envía ese archivo y solo cuando lo pides. Puedes desactivarlo en ⚙️ Ajustes; sin tu aceptación no se envía nada.</p>
     <h3>Familia</h3>
     <p>Si te unes a una familia, los demás integrantes ven tu nombre y los alimentos que marcaste que no comes. <b>No ven</b> tus datos de salud, hábitos ni notas.</p>
     <h3>¿Dónde se guardan y cómo se protegen?</h3>
@@ -801,19 +804,30 @@ async function abrirArchivo(id, nombre) {
   } catch (e) { if (ventana) ventana.close(); toast(e.message); }
 }
 const pesoTxt = (b) => (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
-function htmlListaArchivos(lista, pendientes = []) {
+function htmlListaArchivos(lista, pendientes = [], conIA = false) {
+  const btnIA = (attr) => (conIA ? `<button class="btn chico" ${attr} title="Completar los campos con IA">✨ Leer</button>` : '');
   const fila = (ic, nombre, extra, acciones) => `<div class="fila entre lista-item" style="padding:8px 0"><div style="min-width:0;flex:1"><span>${ic}</span> <span style="word-break:break-all">${esc(nombre)}</span><br><small class="mut">${extra}</small></div><div class="fila" style="gap:6px">${acciones}</div></div>`;
   return lista.map((a) => fila(a.tipo === 'application/pdf' ? '📄' : '🖼️', a.nombre, pesoTxt(a.tamano),
-    `<button class="btn chico sec" data-ver-arch="${a.id}" data-nom="${esc(a.nombre)}">Ver</button><button class="btn chico borde" data-del-arch="${a.id}" title="Quitar">🗑</button>`)).join('') +
-    pendientes.map((f, i) => fila('⏳', f.name, 'Se sube al guardar', `<button class="btn chico borde" data-quitar-pend="${i}">✕</button>`)).join('') ||
+    `${btnIA(`data-ia-arch="${a.id}"`)}<button class="btn chico sec" data-ver-arch="${a.id}" data-nom="${esc(a.nombre)}">Ver</button><button class="btn chico borde" data-del-arch="${a.id}" title="Quitar">🗑</button>`)).join('') +
+    pendientes.map((f, i) => fila('⏳', f.name, 'Se sube al guardar', `${btnIA(`data-ia-pend="${i}"`)}<button class="btn chico borde" data-quitar-pend="${i}">✕</button>`)).join('') ||
     '<p class="mut mb0"><small>Sin archivos todavía.</small></p>';
 }
 // Caja de adjuntos reutilizable. destino: {registro_id} o {ambito}. Si no hay destino aún, guarda pendientes.
-function cajaAdjuntos(raiz, destinoInicial) {
+function cajaAdjuntos(raiz, destinoInicial, opciones = {}) {
   const estado = { destino: destinoInicial, lista: [], pendientes: [] };
   const caja = $('[data-adjuntos]', raiz);
   const pintar = () => {
-    $('[data-lista-arch]', caja).innerHTML = htmlListaArchivos(estado.lista, estado.pendientes);
+    $('[data-lista-arch]', caja).innerHTML = htmlListaArchivos(estado.lista, estado.pendientes, !!opciones.alLeerIA);
+    caja.querySelectorAll('[data-ia-arch]').forEach((b) => (b.onclick = () => leerConIA({ archivo_id: Number(b.dataset.iaArch) }, b, opciones.alLeerIA)));
+    caja.querySelectorAll('[data-ia-pend]').forEach((b) => (b.onclick = async () => {
+      const f = estado.pendientes[Number(b.dataset.iaPend)];
+      try {
+        const cuerpo = f.type === 'application/pdf'
+          ? { nombre: f.name, tipo: 'application/pdf', base64: await leerBase64(f) }
+          : { nombre: f.name, tipo: 'image/jpeg', base64: await comprimirImagen(f) };
+        leerConIA(cuerpo, b, opciones.alLeerIA);
+      } catch (e) { toast(e.message); }
+    }));
     caja.querySelectorAll('[data-ver-arch]').forEach((b) => (b.onclick = () => abrirArchivo(b.dataset.verArch, b.dataset.nom)));
     caja.querySelectorAll('[data-del-arch]').forEach((b) => (b.onclick = async () => {
       if (!confirm('¿Quitar este archivo?')) return;
@@ -848,6 +862,50 @@ function cajaAdjuntos(raiz, destinoInicial) {
     },
   };
 }
+/* ---------- Lectura de estudios con IA ---------- */
+function pedirConsentIA() {
+  if (perfil().consentIA === true) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    modal(`<h2>✨ Completar con IA</h2>
+      <p>Para leer los valores, <b>el archivo que elijas se envía a OpenAI</b> (la empresa de ChatGPT), que lo procesa y devuelve los números.</p>
+      <ul><li>Solo se envía ese archivo, y solo cuando tocas <b>✨ Leer</b>.</li>
+      <li>La IA solo transcribe: <b>no interpreta ni da indicaciones médicas</b>.</li>
+      <li>Puede equivocarse: <b>revisa los valores</b> antes de guardar.</li>
+      <li>Puedes desactivarlo cuando quieras en ⚙️ Ajustes.</li></ul>
+      <button class="btn full" data-ok>Acepto, usar la IA</button><button class="btn full borde mt" data-no>No, gracias</button>`, (o) => {
+      $('[data-ok]', o).onclick = async () => { await guardarPerfil({ consentIA: true }); o.remove(); resolve(true); };
+      $('[data-no]', o).onclick = () => { o.remove(); resolve(false); };
+    });
+  });
+}
+async function leerConIA(cuerpo, boton, alResultado) {
+  if (!(await pedirConsentIA())) return;
+  const txt = boton.textContent; boton.disabled = true; boton.textContent = '⏳ Leyendo…';
+  try {
+    const r = await api('POST', '/api/ia/leer', cuerpo);
+    alResultado(r);
+  } catch (e) { toast(e.message); }
+  boton.disabled = false; boton.textContent = txt;
+}
+// Vuelca lo que leyó la IA en el formulario de estudio
+function llenarConIA(o, r) {
+  const marcar = (el) => { el.classList.add('ia-lleno'); };
+  const sel = $('#c_tipo', o);
+  if (r.tipo === 'inbody') sel.value = 'Composición corporal (InBody)';
+  else if (r.tipo === 'analisis') sel.value = 'Análisis de sangre';
+  sel.onchange && sel.onchange();
+  let n = 0;
+  Object.entries(r.valores || {}).forEach(([k, v]) => { const el = $('#c_' + k, o); if (el) { el.value = v; marcar(el); n++; } });
+  if (r.fecha) { const f = $('#c_fecha', o); f.value = r.fecha; marcar(f); }
+  const lugar = $('#c_lugar', o); if (r.lugar && lugar && !lugar.value) { lugar.value = r.lugar; marcar(lugar); }
+  const res = $('#c_resultado', o); if (r.notas && res && !res.value) { res.value = 'Otros valores: ' + r.notas; marcar(res); }
+  const aviso = $('[data-aviso-ia]', o);
+  if (aviso) aviso.innerHTML = n
+    ? `<div class="nota" style="border-color:var(--verde)">✨ La IA completó <b>${n} valores</b> (resaltados). <b>Revísalos con el informe</b> antes de guardar.${r.restantes >= 0 ? ` Te quedan ${r.restantes} lecturas este mes.` : ''}</div>`
+    : `<div class="nota">La IA no encontró valores de InBody ni de análisis de sangre en este archivo. Puedes cargarlos a mano.</div>`;
+  aviso && aviso.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 const HTML_CAJA_ADJUNTOS = `<div data-adjuntos class="card suave mt" style="margin-bottom:0">
   <h3>📎 Archivos</h3><div data-lista-arch></div>
   <label class="btn sec full mt" style="cursor:pointer">+ Adjuntar PDF o foto<input type="file" accept="application/pdf,image/*" multiple hidden></label>
@@ -866,10 +924,13 @@ function formRegistro(tipo, titulo, campos, existente, alGuardar) {
     <div class="fila entre"><h2 class="mb0">${titulo}</h2><button class="btn chico borde" data-x>✕</button></div>
     ${htmlCampos(todos, datos)}
     ${conAdj ? HTML_CAJA_ADJUNTOS : ''}
+    ${tipo === 'estudio' && S.config.ia ? '<p class="mut mt mb0"><small>✨ Adjunta el PDF o una foto del informe y toca <b>Leer</b> para que la IA complete los valores.</small></p>' : ''}
+    <div data-aviso-ia></div>
     <button class="btn full mt" data-ok>Guardar</button>
     ${existente ? `<button class="btn full mt borde" data-del style="color:var(--rojo)">Borrar</button>` : ''}
   `, (o) => {
-    const adj = conAdj ? cajaAdjuntos(o, existente ? { registro_id: existente.id } : null) : null;
+    const adj = conAdj ? cajaAdjuntos(o, existente ? { registro_id: existente.id } : null,
+      tipo === 'estudio' && S.config.ia ? { alLeerIA: (r) => llenarConIA(o, r) } : {}) : null;
     const selTipo = $('#c_tipo', o);
     const grupos = () => {
       if (!selTipo) return;
@@ -2008,6 +2069,7 @@ async function vistaAjustes() {
     ${htmlCampos(CAMPOS_PERFIL, p)}<button class="btn full mt" id="perf-ok">Guardar</button></div>
   <div class="card"><h2>Mi día</h2>
     <div class="check ${oracionOn ? 'ok' : ''}" id="aj-oracion"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🙏 Incluir momentos de oración</span></div>
+    ${S.config.ia ? `<div class="check ${p.consentIA === true ? 'ok' : ''}" id="aj-ia"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">✨ Permitir leer mis estudios con IA (OpenAI)</span></div>` : ''}
     <button class="btn full sec mt" onclick="bienvenida().then(()=>ir('hoy'))">Ver de nuevo la bienvenida</button></div>
   <div class="card"><h2>Contraseña</h2>
     <label class="f">Actual</label><input class="i" type="password" id="pw-a" autocomplete="current-password">
@@ -2032,6 +2094,11 @@ async function vistaAjustes() {
     const nom = $('#aj-nombre').value.trim();
     if (nom && nom !== S.usuario.nombre) v.nombre_cuenta = nom;
     await guardarPerfil(v); toast('Guardado ✓');
+  };
+  const ajIa = $('#aj-ia');
+  if (ajIa) ajIa.onclick = async (e) => {
+    e.currentTarget.classList.toggle('ok');
+    await guardarPerfil({ consentIA: e.currentTarget.classList.contains('ok') }); toast('Guardado ✓');
   };
   $('#aj-oracion').onclick = async (e) => {
     e.currentTarget.classList.toggle('ok');
@@ -2071,7 +2138,7 @@ async function vistaAjustes() {
         <div class="grid2" style="margin-top:8px">
           ${[['Usuarios', e.usuarios], ['Familias', e.familias], ['Activos 7 días', e.activos7], ['Activos 30 días', e.activos30], ['Nuevos 7 días', e.nuevos7], ['Nuevos 30 días', e.nuevos30]]
             .map(([t, n]) => `<div><div class="big">${n}</div><small style="color:#fff;opacity:.85">${t}</small></div>`).join('')}
-        </div><p class="mb0 mt"><small style="color:#fff;opacity:.85">${e.registros30} registros cargados en los últimos 30 días. Solo ves totales, nunca los datos de nadie.</small></p>`;
+        </div><p class="mb0 mt"><small style="color:#fff;opacity:.85">${e.registros30} registros y ${e.ia30} lecturas con IA en los últimos 30 días. Solo ves totales, nunca los datos de nadie.</small></p>`;
     } catch (err) { $('#admin').innerHTML = `<p class="mb0">No se pudieron cargar las estadísticas.</p>`; }
   }
 }

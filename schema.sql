@@ -69,3 +69,12 @@ CREATE TABLE IF NOT EXISTS archivos (
   creado      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_archivos_usuario ON archivos (usuario_id, registro_id);
+
+-- Lecturas de estudios con IA (para limitar el uso por mes)
+CREATE TABLE IF NOT EXISTS ia_usos (
+  id          SERIAL PRIMARY KEY,
+  usuario_id  INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  ok          BOOLEAN NOT NULL DEFAULT true,
+  creado      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_ia_usos ON ia_usos (usuario_id, creado);

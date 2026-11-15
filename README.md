@@ -17,4 +17,7 @@ El esquema (`schema.sql`) se aplica solo al arrancar.
 | `MAIL_FROM` | no | Remitente, ej.: `Vamos Pa' Arriba <no-reply@i8aproject.com>` |
 | `SOPORTE_EMAIL` | no | Contacto que se muestra en la app y en la privacidad |
 | `APP_URL` | no | URL pública, ej.: `https://vamospaarriba.i8aproject.com` |
+| `OPENAI_API_KEY` | no | Activa "✨ Completar con IA" (lee PDF o foto de InBody y análisis) |
+| `OPENAI_MODEL` | no | Modelo de OpenAI. Por defecto `gpt-5-mini` |
+| `IA_LIMITE_MES` | no | Lecturas con IA por usuario por mes. Por defecto 10 |
 | `PORT` | no | Por defecto 3000 |
