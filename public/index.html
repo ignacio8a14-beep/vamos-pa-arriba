@@ -287,24 +287,25 @@ const RECETAS = [
   { id: 'arepa_huevo', n: 'Arepa con huevo y queso blanco', m: 'd', ing: ['harina_maiz', 'huevo', 'queso'], p: 'Una arepa mediana (no dos 😉) asada en budare o sartén sin aceite, rellena con huevo revuelto y un poco de queso blanco.' },
   { id: 'arepa_pollo', n: 'Arepa con pollo desmechado y tomate', m: 'd', ing: ['harina_maiz', 'pollo', 'tomate'], p: 'Una arepa mediana con pollo desmechado que sobró de otra comida, tomate y lechuga.' },
   { id: 'licuado', n: 'Licuado de banana con leche y avena', m: 'dm', ing: ['leche', 'banana', 'avena'], p: 'Licúa 1 banana, 1 vaso de leche descremada y 1 cucharada de avena. Sin azúcar.' },
-  { id: 'fruta_mani', n: 'Fruta + un puñado de maní sin sal', m: 'm', ing: ['fruta', 'mani'], p: 'Una fruta entera y un puñado chico de maní (lo que entra en la palma cerrada).' },
-  { id: 'tostada_huevo', n: 'Tostada integral con huevo duro', m: 'm', ing: ['pan_integral', 'huevo'], p: 'Una tostada integral con un huevo duro en rodajas, sal y pimienta.' },
-  { id: 'yogur_semillas', n: 'Yogur con manzana y semillas', m: 'm', ing: ['yogur', 'manzana', 'semillas'], p: 'Yogur natural, media manzana en cubitos y una cucharadita de semillas.' },
-  { id: 'galletas_queso', n: 'Infusión + galletas de arroz con queso', m: 'm', ing: ['galletas_arroz', 'queso'], p: 'Mate, té o café sin azúcar con 3 galletas de arroz y queso blanco.' },
-  { id: 'bastones_hummus', n: 'Bastones de zanahoria y pepino con hummus', m: 'm', ing: ['zanahoria', 'pepino', 'garbanzos'], p: 'Hummus casero: garbanzos cocidos, limón, ajo, un chorrito de aceite y agua; procesar. Mojar bastones de verdura.' },
-  { id: 'fruta_yogur', n: 'Fruta con yogur natural', m: 'm', ing: ['fruta', 'yogur'], p: 'Una fruta de estación picada con yogur natural sin azúcar.' },
+  { id: 'fruta_mani', n: 'Fruta + un puñado de maní sin sal', m: 'mk', ing: ['fruta', 'mani'], p: 'Una fruta entera y un puñado chico de maní (lo que entra en la palma cerrada).' },
+  { id: 'tostada_huevo', n: 'Tostada integral con huevo duro', m: 'mk', ing: ['pan_integral', 'huevo'], p: 'Una tostada integral con un huevo duro en rodajas, sal y pimienta.' },
+  { id: 'yogur_semillas', n: 'Yogur con manzana y semillas', m: 'mk', ing: ['yogur', 'manzana', 'semillas'], p: 'Yogur natural, media manzana en cubitos y una cucharadita de semillas.' },
+  { id: 'galletas_queso', n: 'Infusión + galletas de arroz con queso', m: 'mk', ing: ['galletas_arroz', 'queso'], p: 'Mate, té o café sin azúcar con 3 galletas de arroz y queso blanco.' },
+  { id: 'bastones_hummus', n: 'Bastones de zanahoria y pepino con hummus', m: 'mk', ing: ['zanahoria', 'pepino', 'garbanzos'], p: 'Hummus casero: garbanzos cocidos, limón, ajo, un chorrito de aceite y agua; procesar. Mojar bastones de verdura.' },
+  { id: 'fruta_sola', n: 'Una fruta de estación', m: 'k', ing: ['fruta'], p: 'Una fruta entera, con cáscara si se puede. Simple y práctica para media mañana.' },
+  { id: 'fruta_yogur', n: 'Fruta con yogur natural', m: 'mk', ing: ['fruta', 'yogur'], p: 'Una fruta de estación picada con yogur natural sin azúcar.' },
   // Almuerzos y cenas
-  { id: 'merluza_papas', n: 'Merluza al horno con papas y ensalada', m: 'ac', tag: 'pescado', ing: ['pescado', 'papa', 'lechuga', 'tomate', 'aceite'], p: 'Filet de merluza con limón, ajo y perejil al horno 15-20 min. Papas al horno en cubos (porción chica) y mucha ensalada.' },
+  { id: 'merluza_papas', n: 'Merluza al horno con papas y ensalada', m: 'a', tag: 'pescado', ing: ['pescado', 'papa', 'lechuga', 'tomate', 'aceite'], p: 'Filet de merluza con limón, ajo y perejil al horno 15-20 min. Papas al horno en cubos (porción chica) y mucha ensalada.' },
   { id: 'pescado_arroz', n: 'Pescado a la plancha con arroz integral y brócoli', m: 'ac', tag: 'pescado', ing: ['pescado', 'arroz_integral', 'brocoli'], p: 'Pescado a la plancha, media taza de arroz integral cocido y brócoli al vapor con limón.' },
   { id: 'atun_ensalada', n: 'Ensalada completa de atún, huevo, papa y chauchas', m: 'ac', tag: 'pescado', ing: ['atun', 'huevo', 'papa', 'chauchas', 'tomate'], p: 'Papa y chauchas hervidas, huevo duro, atún al natural escurrido y tomate. Aliño: limón y una cucharadita de aceite.' },
   { id: 'sardinas_ensalada', n: 'Sardinas con ensalada de papa, zanahoria y huevo', m: 'ac', tag: 'pescado', ing: ['sardinas', 'papa', 'zanahoria', 'huevo'], p: 'Ensalada rusa liviana (sin mayonesa: con yogur natural y limón) + una lata de sardinas escurridas.' },
-  { id: 'fideos_atun', n: 'Fideos integrales con salsa de tomate y atún', m: 'ac', tag: 'pescado', ing: ['fideos_integrales', 'tomate', 'atun', 'cebolla'], p: 'Salsa: cebolla rehogada con poco aceite, tomate triturado y atún. Porción de fideos: un plato playo, no hondo.' },
+  { id: 'fideos_atun', n: 'Fideos integrales con salsa de tomate y atún', m: 'a', tag: 'pescado', ing: ['fideos_integrales', 'tomate', 'atun', 'cebolla'], p: 'Salsa: cebolla rehogada con poco aceite, tomate triturado y atún. Porción de fideos: un plato playo, no hondo.' },
   { id: 'pollo_zapallo', n: 'Pollo al horno con zapallo y brócoli', m: 'ac', ing: ['pollo', 'zapallo', 'brocoli', 'aceite'], p: 'Pollo sin piel con pimentón y ajo al horno. Zapallo en cubos asado en la misma fuente y brócoli al vapor.' },
-  { id: 'arroz_pollo', n: 'Arroz integral con pollo y verduras salteadas', m: 'ac', ing: ['arroz_integral', 'pollo', 'zanahoria', 'zapallito', 'morron'], p: 'Saltea pollo en tiras con zanahoria, zapallito y morrón. Sirve con media taza de arroz integral.' },
-  { id: 'milanesas_pure', n: 'Milanesas de pollo al horno con puré de calabaza', m: 'ac', ing: ['pollo', 'huevo', 'pan_rallado', 'zapallo'], p: 'Milanesas de pechuga al horno (no fritas). Puré de calabaza con una pizca de nuez moscada. Ensalada al lado.' },
+  { id: 'arroz_pollo', n: 'Arroz integral con pollo y verduras salteadas', m: 'a', ing: ['arroz_integral', 'pollo', 'zanahoria', 'zapallito', 'morron'], p: 'Saltea pollo en tiras con zanahoria, zapallito y morrón. Sirve con media taza de arroz integral.' },
+  { id: 'milanesas_pure', n: 'Milanesas de pollo al horno con puré de calabaza', m: 'a', ing: ['pollo', 'huevo', 'pan_rallado', 'zapallo'], p: 'Milanesas de pechuga al horno (no fritas). Puré de calabaza con una pizca de nuez moscada. Ensalada al lado.' },
   { id: 'sopa_pollo', n: 'Sopa de verduras con pollo desmechado', m: 'c', ing: ['pollo', 'zanahoria', 'zapallo', 'cebolla', 'papa'], p: 'Hierve pollo con cebolla, zanahoria, zapallo y una papa chica. Desmecha el pollo y vuelve a la olla. Ideal para la noche.' },
   { id: 'wok_pollo', n: 'Wok de pollo con repollo y zanahoria', m: 'ac', ing: ['pollo', 'repollo', 'zanahoria', 'arroz_integral'], p: 'Pollo en tiras salteado con repollo y zanahoria en juliana, salsa de soja (poca). Un poco de arroz integral.' },
-  { id: 'cazuela_pollo', n: 'Cazuela de pollo y garbanzos', m: 'ac', tag: 'legumbre', ing: ['pollo', 'garbanzos', 'tomate', 'cebolla'], p: 'Pollo en trozos con cebolla, tomate y garbanzos cocidos, a fuego lento 25 min con comino y pimentón.' },
+  { id: 'cazuela_pollo', n: 'Cazuela de pollo y garbanzos', m: 'a', tag: 'legumbre', ing: ['pollo', 'garbanzos', 'tomate', 'cebolla'], p: 'Pollo en trozos con cebolla, tomate y garbanzos cocidos, a fuego lento 25 min con comino y pimentón.' },
   { id: 'carne_batata', n: 'Carne magra a la plancha con ensalada y batata', m: 'a', ing: ['carne', 'lechuga', 'tomate', 'batata'], p: 'Un bife de nalga o peceto (del tamaño de tu palma) a la plancha, ensalada grande y batata al horno.' },
   { id: 'zapallitos_rellenos', n: 'Zapallitos rellenos de carne magra', m: 'ac', ing: ['zapallito', 'carne', 'cebolla', 'queso'], p: 'Vacía zapallitos, rehoga la pulpa con cebolla y carne picada magra. Rellena, un poco de queso arriba y horno 20 min.' },
   { id: 'cerdo_manzana', n: 'Solomillo de cerdo al horno con manzana y batata', m: 'a', ing: ['cerdo', 'manzana', 'batata'], p: 'Solomillo o carré sin grasa visible al horno con manzana en gajos y batata. Romero si tienes.' },
@@ -312,12 +313,21 @@ const RECETAS = [
   { id: 'hamb_lentejas', n: 'Hamburguesas caseras de lentejas con ensalada', m: 'ac', tag: 'legumbre', ing: ['lentejas', 'avena', 'cebolla', 'lechuga', 'tomate'], p: 'Pisa lentejas cocidas con cebolla rehogada y avena. Forma medallones y cocina en sartén o al horno. Ensalada al lado.' },
   { id: 'garbanzos_salteados', n: 'Garbanzos salteados con verduras y huevo', m: 'ac', tag: 'legumbre', ing: ['garbanzos', 'cebolla', 'morron', 'zapallito', 'huevo'], p: 'Saltea verduras, suma garbanzos cocidos y al final un huevo revuelto.' },
   { id: 'pabellon', n: 'Caraotas negras con arroz integral y huevo', m: 'a', tag: 'legumbre', ing: ['porotos', 'arroz_integral', 'huevo', 'cebolla'], p: 'Un pabellón liviano: caraotas guisadas con cebolla y ajo, media taza de arroz integral y un huevo a la plancha (sin tajadas fritas).' },
-  { id: 'tarta_acelga', n: 'Tarta de acelga con masa integral', m: 'ac', ing: ['acelga', 'huevo', 'cebolla', 'harina_integral', 'queso'], p: 'Masa integral casera fina. Relleno: acelga hervida y escurrida, cebolla, 2 huevos y un poco de queso. Una porción + ensalada.' },
+  { id: 'tarta_acelga', n: 'Tarta de acelga con masa integral', m: 'a', ing: ['acelga', 'huevo', 'cebolla', 'harina_integral', 'queso'], p: 'Masa integral casera fina. Relleno: acelga hervida y escurrida, cebolla, 2 huevos y un poco de queso. Una porción + ensalada.' },
   { id: 'omelette_acelga', n: 'Omelette de espinaca o acelga con ensalada', m: 'c', ing: ['huevo', 'acelga', 'tomate', 'lechuga'], p: '2 huevos con acelga o espinaca salteada. Ensalada de tomate y hojas verdes.' },
   { id: 'revuelto_zapallitos', n: 'Revuelto de zapallitos con huevo y queso', m: 'c', ing: ['zapallito', 'huevo', 'queso', 'cebolla'], p: 'Zapallitos y cebolla rehogados, 2 huevos y un poco de queso. Rápido y liviano para la noche.' },
+  { id: 'crema_zapallo', n: 'Crema de zapallo con huevo duro', m: 'c', ing: ['zapallo', 'cebolla', 'huevo'], p: 'Hierve zapallo y cebolla, licúa con un poco del agua de cocción. Sirve con un huevo duro picado arriba. Liviana y reconfortante.' },
+  { id: 'ensalada_tibia_pollo', n: 'Ensalada tibia de pollo y verduras asadas', m: 'c', ing: ['pollo', 'zapallito', 'morron', 'lechuga'], p: 'Pollo en tiras a la plancha con zapallito y morrón asados, sobre hojas verdes. Limón y una cucharadita de aceite.' },
+  { id: 'tortilla_verduras', n: 'Tortilla de verduras al horno', m: 'c', ing: ['huevo', 'zapallito', 'cebolla', 'acelga'], p: 'Verduras rehogadas mezcladas con 2 huevos, al horno en fuente chica 15-20 min. Sin papa, para que quede liviana.' },
+  { id: 'pescado_papillote', n: 'Pescado al papillote con verduras', m: 'c', tag: 'pescado', ing: ['pescado', 'zanahoria', 'zapallito', 'cebolla'], p: 'Filet de pescado sobre verduras en juliana, cerrado en papel aluminio con limón y especias. Horno 15-20 min.' },
   { id: 'berenjenas_horno', n: 'Berenjenas al horno con tomate y queso', m: 'c', ing: ['berenjena', 'queso', 'tomate', 'huevo'], p: 'Rodajas de berenjena al horno, tomate y queso arriba, gratinar. Acompaña con un huevo duro.' },
 ];
-const MOMENTOS = [['d', 'Desayuno', '☕'], ['a', 'Almuerzo', '🍽️'], ['m', 'Merienda', '🍎'], ['c', 'Cena', '🌙']];
+const TODOS_MOMENTOS = [['d', 'Desayuno', '☕'], ['k', 'Colación', '🍌'], ['a', 'Almuerzo', '🍽️'], ['m', 'Merienda', '🍎'], ['c', 'Cena', '🌙']];
+// MOMENTOS se calcula según si el usuario quiere colación
+let MOMENTOS = TODOS_MOMENTOS;
+const HORARIOS_DEF = { d: '07:30', k: '10:30', a: '13:00', m: '17:00', c: '20:30' };
+const horaDe = (m) => (perfil().horarios || {})[m] || HORARIOS_DEF[m];
+function actualizarMomentos() { MOMENTOS = TODOS_MOMENTOS.filter(([m]) => m !== 'k' || perfil().colacion !== false); }
 
 // Ejercicios: valores por nivel (1 a 6). t: 'r' repeticiones, 's' segundos
 const RUTINAS = {
@@ -420,6 +430,26 @@ const LAB = [
   { k: 'tsh', n: 'TSH', u: 'µUI/mL', ok: (v) => v >= 0.4 && v <= 4, medio: () => false, ref: '0,4 – 4,0' },
   { k: 'au', n: 'Ácido úrico', u: 'mg/dL', ok: (v) => v <= 7, medio: (v) => v <= 8, ref: '≤ 7' },
 ];
+
+// Composición corporal (InBody). mejor: 'baja' o 'sube' indica hacia dónde conviene que vaya
+const INBODY = [
+  { k: 'ib_peso', n: 'Peso', u: 'kg' },
+  { k: 'ib_musculo', n: 'Masa muscular esquelética', u: 'kg', mejor: 'sube' },
+  { k: 'ib_grasa_kg', n: 'Masa grasa', u: 'kg', mejor: 'baja' },
+  { k: 'ib_grasa_pct', n: 'Porcentaje de grasa', u: '%', mejor: 'baja' },
+  { k: 'ib_visceral', n: 'Nivel de grasa visceral', u: '', mejor: 'baja' },
+  { k: 'ib_agua', n: 'Agua corporal total', u: 'L' },
+  { k: 'ib_imc', n: 'IMC', u: '' },
+  { k: 'ib_metab', n: 'Metabolismo basal', u: 'kcal' },
+  { k: 'ib_puntaje', n: 'Puntaje InBody', u: '', mejor: 'sube' },
+];
+const ES_INBODY = (r) => r.datos.tipo === 'Composición corporal (InBody)';
+function flechaInbody(def, actual, antes) {
+  if (actual == null || antes == null || actual === antes) return actual === antes && actual != null ? '=' : '';
+  const sube = actual > antes;
+  const color = !def.mejor ? 'var(--gris)' : (def.mejor === 'sube') === sube ? 'var(--verde)' : 'var(--rojo)';
+  return `<span style="color:${color};font-weight:700">${sube ? '↑' : '↓'}</span>`;
+}
 
 /* =========================================================
    LOGIN
@@ -677,6 +707,7 @@ function ir(vista) {
 document.querySelectorAll('#nav button').forEach((b) => (b.onclick = () => ir(b.dataset.v)));
 
 async function render() {
+  actualizarMomentos();
   const f = { hoy: vistaHoy, comida: vistaComida, mover: vistaMover, calma: vistaCalma, salud: vistaSalud, ajustes: vistaAjustes }[S.vista];
   try { await f(); } catch (e) { console.error(e); $('#app').innerHTML = `<div class="card">No se pudo cargar: ${esc(e.message)}</div>`; }
 }
@@ -701,6 +732,12 @@ function modal(html, alAbrir) {
 // campos: [{k, l, t: text|number|date|time|textarea|select|check|escala, op:[...], ph}]
 function htmlCampos(campos, datos = {}) {
   return campos.map((c) => {
+    const h = htmlCampo(c, datos);
+    return c.g ? `<div data-grupo="${c.g}">${h}</div>` : h;
+  }).join('');
+}
+function htmlCampo(c, datos) {
+  {
     const v = datos[c.k] ?? c.def ?? '';
     const id = 'c_' + c.k;
     if (c.t === 'titulo') return `<h3 class="mt">${c.l}</h3>`;
@@ -710,7 +747,7 @@ function htmlCampos(campos, datos = {}) {
     if (c.t === 'escala') return `<label class="f">${c.l}</label><div class="fila" id="${id}" data-v="${esc(v)}">${c.op.map((o, i) => `<button type="button" class="emo ${String(v) === String(i + 1) ? 'on' : ''}" data-i="${i + 1}" onclick="this.parentNode.dataset.v=this.dataset.i;[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this))">${o}</button>`).join('')}</div>`;
     const step = c.t === 'number' ? 'step="any" inputmode="decimal"' : '';
     return `<label class="f">${c.l}</label><input class="i" id="${id}" type="${c.t || 'text'}" ${step} value="${esc(v)}" placeholder="${esc(c.ph || '')}">`;
-  }).join('');
+  }
 }
 function leerCampos(campos, raiz) {
   const out = {};
@@ -726,27 +763,137 @@ function leerCampos(campos, raiz) {
   return out;
 }
 
+/* ---------- Archivos adjuntos (PDF y fotos) ---------- */
+const MAX_PDF = 10 * 1024 * 1024;
+function leerBase64(file) {
+  return new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = mal; r.readAsDataURL(file); });
+}
+async function comprimirImagen(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    await new Promise((ok, mal) => { img.onload = ok; img.onerror = () => mal(new Error('No se pudo leer la foto')); img.src = url; });
+    const k = Math.min(1, 1800 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.82).split(',')[1];
+  } finally { URL.revokeObjectURL(url); }
+}
+async function subirArchivo(file, destino) {
+  let base64, tipo, nombre = file.name || 'archivo';
+  if (file.type === 'application/pdf') {
+    if (file.size > MAX_PDF) throw new Error(`"${nombre}" pesa más de 10 MB`);
+    base64 = await leerBase64(file); tipo = 'application/pdf';
+  } else if (file.type.startsWith('image/')) {
+    base64 = await comprimirImagen(file); tipo = 'image/jpeg'; nombre = nombre.replace(/\.[^.]+$/, '') + '.jpg';
+  } else throw new Error(`"${nombre}": solo se aceptan PDF o fotos`);
+  return api('POST', '/api/archivos', { nombre, tipo, base64, ...destino });
+}
+async function abrirArchivo(id, nombre) {
+  const ventana = window.open('', '_blank');
+  try {
+    const r = await fetch('/api/archivos/' + id, { headers: { Authorization: 'Bearer ' + S.token } });
+    if (!r.ok) throw new Error('No se pudo abrir el archivo');
+    const url = URL.createObjectURL(await r.blob());
+    if (ventana) ventana.location = url;
+    else { const a = document.createElement('a'); a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) { if (ventana) ventana.close(); toast(e.message); }
+}
+const pesoTxt = (b) => (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+function htmlListaArchivos(lista, pendientes = []) {
+  const fila = (ic, nombre, extra, acciones) => `<div class="fila entre lista-item" style="padding:8px 0"><div style="min-width:0;flex:1"><span>${ic}</span> <span style="word-break:break-all">${esc(nombre)}</span><br><small class="mut">${extra}</small></div><div class="fila" style="gap:6px">${acciones}</div></div>`;
+  return lista.map((a) => fila(a.tipo === 'application/pdf' ? '📄' : '🖼️', a.nombre, pesoTxt(a.tamano),
+    `<button class="btn chico sec" data-ver-arch="${a.id}" data-nom="${esc(a.nombre)}">Ver</button><button class="btn chico borde" data-del-arch="${a.id}" title="Quitar">🗑</button>`)).join('') +
+    pendientes.map((f, i) => fila('⏳', f.name, 'Se sube al guardar', `<button class="btn chico borde" data-quitar-pend="${i}">✕</button>`)).join('') ||
+    '<p class="mut mb0"><small>Sin archivos todavía.</small></p>';
+}
+// Caja de adjuntos reutilizable. destino: {registro_id} o {ambito}. Si no hay destino aún, guarda pendientes.
+function cajaAdjuntos(raiz, destinoInicial) {
+  const estado = { destino: destinoInicial, lista: [], pendientes: [] };
+  const caja = $('[data-adjuntos]', raiz);
+  const pintar = () => {
+    $('[data-lista-arch]', caja).innerHTML = htmlListaArchivos(estado.lista, estado.pendientes);
+    caja.querySelectorAll('[data-ver-arch]').forEach((b) => (b.onclick = () => abrirArchivo(b.dataset.verArch, b.dataset.nom)));
+    caja.querySelectorAll('[data-del-arch]').forEach((b) => (b.onclick = async () => {
+      if (!confirm('¿Quitar este archivo?')) return;
+      await api('DELETE', '/api/archivos/' + b.dataset.delArch); await cargar();
+    }));
+    caja.querySelectorAll('[data-quitar-pend]').forEach((b) => (b.onclick = () => { estado.pendientes.splice(Number(b.dataset.quitarPend), 1); pintar(); }));
+  };
+  const cargar = async () => {
+    if (estado.destino) {
+      const q = estado.destino.registro_id ? 'registro_id=' + estado.destino.registro_id : 'ambito=' + estado.destino.ambito;
+      estado.lista = await api('GET', '/api/archivos?' + q);
+    }
+    pintar();
+  };
+  const subirTodos = async (files) => {
+    for (const f of files) {
+      try { toast('Subiendo ' + f.name + '…'); await subirArchivo(f, estado.destino); }
+      catch (e) { toast(e.message); }
+    }
+  };
+  $('input[type=file]', caja).onchange = async (e) => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!estado.destino) { estado.pendientes.push(...files); pintar(); return; }
+    await subirTodos(files); await cargar(); toast('Archivo guardado ✓');
+  };
+  cargar();
+  return {
+    // para registros nuevos: al guardar, se sube lo pendiente
+    async alGuardar(destino) {
+      if (!estado.pendientes.length) return;
+      estado.destino = destino; await subirTodos(estado.pendientes); estado.pendientes = [];
+    },
+  };
+}
+const HTML_CAJA_ADJUNTOS = `<div data-adjuntos class="card suave mt" style="margin-bottom:0">
+  <h3>📎 Archivos</h3><div data-lista-arch></div>
+  <label class="btn sec full mt" style="cursor:pointer">+ Adjuntar PDF o foto<input type="file" accept="application/pdf,image/*" multiple hidden></label>
+  <small class="mut">Informes, recetas, fotos de estudios. PDF de hasta 10 MB.</small></div>`;
+
+// Qué grupo de campos mostrar según el tipo elegido en el formulario
+const GRUPO_POR_TIPO = { lab: 'Análisis de sangre', inbody: 'Composición corporal (InBody)' };
+
 // Formulario de registro (crear o editar)
+const CON_ADJUNTOS = ['estudio', 'consulta'];
 function formRegistro(tipo, titulo, campos, existente, alGuardar) {
   const datos = existente ? { ...existente.datos, fecha: existente.fecha } : { fecha: hoyStr() };
   const todos = [{ k: 'fecha', l: 'Fecha', t: 'date' }, ...campos];
+  const conAdj = CON_ADJUNTOS.includes(tipo);
   modal(`
     <div class="fila entre"><h2 class="mb0">${titulo}</h2><button class="btn chico borde" data-x>✕</button></div>
     ${htmlCampos(todos, datos)}
+    ${conAdj ? HTML_CAJA_ADJUNTOS : ''}
     <button class="btn full mt" data-ok>Guardar</button>
     ${existente ? `<button class="btn full mt borde" data-del style="color:var(--rojo)">Borrar</button>` : ''}
   `, (o) => {
+    const adj = conAdj ? cajaAdjuntos(o, existente ? { registro_id: existente.id } : null) : null;
+    const selTipo = $('#c_tipo', o);
+    const grupos = () => {
+      if (!selTipo) return;
+      o.querySelectorAll('[data-grupo]').forEach((d) => (d.style.display = GRUPO_POR_TIPO[d.dataset.grupo] === selTipo.value ? '' : 'none'));
+    };
+    if (selTipo) { selTipo.onchange = grupos; grupos(); }
     $('[data-x]', o).onclick = () => o.remove();
     $('[data-ok]', o).onclick = async () => {
       const v = leerCampos(todos, o);
+      // no guardar valores de grupos ocultos (ej.: campos de InBody en un análisis de sangre)
+      if (selTipo) todos.forEach((c) => { if (c.g && GRUPO_POR_TIPO[c.g] !== v.tipo) delete v[c.k]; });
       const fecha = v.fecha || hoyStr(); delete v.fecha;
+      const btn = $('[data-ok]', o); btn.disabled = true;
       try {
         if (existente) await editarRegistro(existente.id, tipo, fecha, v);
-        else await nuevoRegistro(tipo, fecha, v);
+        else {
+          const nuevo = await nuevoRegistro(tipo, fecha, v);
+          if (adj) await adj.alGuardar({ registro_id: nuevo.id });
+        }
+        delete S.cache[tipo];
         o.remove(); toast('Guardado ✓');
         alGuardar && alGuardar(fecha, v);
         render();
-      } catch (e) { toast(e.message); }
+      } catch (e) { toast(e.message); btn.disabled = false; }
     };
     if (existente) $('[data-del]', o).onclick = async () => {
       if (!confirm('¿Borrar este registro?')) return;
@@ -836,7 +983,7 @@ async function vistaHoy() {
     ${plan ? MOMENTOS.map(([m, nom, ic]) => {
       const rc = receta(plan[m]); if (!rc) return '';
       const ok = (d.comidas || {})[m];
-      return `<div class="check ${ok ? 'ok' : ''}" data-c="${m}"><span class="caja">✓</span><span class="txt"><small>${ic} ${nom}</small><br>${esc(rc.n)}</span></div>`;
+      return `<div class="check ${ok ? 'ok' : ''}" data-c="${m}"><span class="caja">✓</span><span class="txt"><small>${ic} ${nom} · ${horaDe(m)}</small><br>${esc(rc.n)}</span></div>`;
     }).join('') : `<p class="mut">Todavía no tienes plan esta semana.</p><button class="btn full" onclick="ir('comida')">Armar mi plan de comidas</button>`}
   </div>
 
@@ -928,7 +1075,8 @@ function generarPlan(inicio) {
     const ev = Object.values(prev);
     const dia = {};
     dia.d = elegir('d', ev);
-    dia.m = elegir('m', [...ev, dia.d]);
+    dia.k = elegir('k', [...ev, dia.d]);
+    dia.m = elegir('m', [...ev, dia.d, dia.k]);
     // pescado días 1 y 4; legumbres días 2 y 5
     const tagA = i === 0 || i === 3 ? 'pescado' : i === 1 || i === 4 ? 'legumbre' : null;
     dia.a = elegir('a', ev, tagA);
@@ -940,7 +1088,7 @@ function generarPlan(inicio) {
 
 async function vistaComida() {
   const sub = S.sub.comida || 'plan';
-  const tabs = [['plan', '📅 Plan semanal'], ['compras', '🛒 Compras'], ['excluir', '🚫 Lo que no como'], ['familia', '👨‍👩‍👧 Familia'], ['guia', '💡 Guía']];
+  const tabs = [['plan', '📅 Plan semanal'], ['compras', '🛒 Compras'], ['excluir', '🚫 Lo que no como'], ['familia', '👨‍👩‍👧 Familia'], ['nutri', '👩‍⚕️ Mi nutricionista'], ['guia', '💡 Guía']];
   let cuerpo = '';
   await cargarFamilia();
   const p = perfil();
@@ -953,12 +1101,14 @@ async function vistaComida() {
     if (!(p.excluye && p.excluye.length) && !p.excluyeOk) {
       cuerpo += `<div class="card suave"><p class="mb0">Antes de armar el plan, marca <b>lo que no comes</b> para que no aparezca.</p><button class="btn full mt" onclick="S.sub.comida='excluir';render()">Marcar lo que no como</button></div>`;
     }
+    const nutri = p.nutri || {};
+    if (nutri.pautas) cuerpo += `<div class="card suave"><small>👩‍⚕️ <b>Tienes pautas de tu nutricionista.</b> Lo que indicó va primero: usa este plan solo como ideas que encajen con sus pautas.</small><button class="btn chico sec mt" onclick="S.sub.comida='nutri';render()">Ver mis pautas</button></div>`;
     if (!vigente) {
       cuerpo += `<div class="card"><h2>Plan de los próximos 7 días</h2><p class="mut">Comidas simples, caseras y económicas, pensadas para bajar triglicéridos y colesterol.</p>
       <button class="btn full" id="gen">✨ Armar mi plan de 7 días</button></div>`;
     } else {
       if (S.familia) cuerpo += `<div class="card suave" style="padding:10px 14px"><small>👨‍👩‍👧 Plan compartido de <b>${esc(S.familia.nombre)}</b> · ${personas()} personas · sin lo que no come nadie de la casa</small></div>`;
-      cuerpo += `<div class="fila entre" style="margin-bottom:8px"><small>Del ${fechaCorta(plan.inicio)} al ${fechaCorta(sumarDias(plan.inicio, 6))}</small><button class="btn chico borde" id="gen">🔄 Rehacer semana</button></div>`;
+      cuerpo += `<div class="fila entre" style="margin-bottom:8px"><small>Del ${fechaCorta(plan.inicio)} al ${fechaCorta(sumarDias(plan.inicio, 6))}</small><div class="fila" style="gap:6px"><button class="btn chico borde" id="horarios">⏰ Horarios</button><button class="btn chico borde" id="gen">🔄 Rehacer</button></div></div>`;
       plan.dias.forEach((dia, i) => {
         const f = sumarDias(plan.inicio, i);
         const esHoy = f === hoy;
@@ -966,7 +1116,7 @@ async function vistaComida() {
           <h3>${DIAS[parseF(f).getDay()]} ${parseF(f).getDate()} ${esHoy ? '<span class="badge">Hoy</span>' : ''}</h3>
           ${MOMENTOS.map(([m, nom, ic]) => {
             const r = receta(dia[m]);
-            return `<div class="comida"><div style="flex:1"><div class="mom">${ic} ${nom}</div>
+            return `<div class="comida"><div style="flex:1"><div class="mom">${ic} ${nom} · ${horaDe(m)}</div>
               <div>${r ? esc(r.n) : '<span class="mut">—</span>'}</div></div>
               <button class="btn chico borde" data-ver="${i}|${m}" title="Ver receta">👁</button>
               <button class="btn chico borde" data-cam="${i}|${m}" title="Cambiar">🔄</button></div>`;
@@ -1024,8 +1174,25 @@ async function vistaComida() {
     }
   }
 
+  if (sub === 'nutri') {
+    const n = p.nutri || {};
+    cuerpo = `<div class="card"><h2>👩‍⚕️ Mi nutricionista</h2>
+      <p class="mut">Si te atiende un nutricionista, guarda acá lo que te indica. <b>Sus indicaciones van siempre primero</b>: el plan de la app es una guía general.</p>
+      <label class="f">Profesional</label><input class="i" id="n-nombre" value="${esc(n.nombre || '')}" placeholder="Ej.: Lic. Pérez">
+      <label class="f">Próximo control</label><input class="i" id="n-proximo" type="date" value="${esc(n.proximo || '')}">
+      <label class="f">Pautas e indicaciones</label><textarea class="i" id="n-pautas" style="min-height:160px" placeholder="Ej.: desayuno completo; colación a media mañana; cena liviana antes de las 21; 2 litros de agua…">${esc(n.pautas || '')}</textarea>
+      <button class="btn full mt" id="n-ok">Guardar</button></div>
+      ${HTML_CAJA_ADJUNTOS.replace('<h3>📎 Archivos</h3>', '<h3>📎 Planes, infografías y estudios</h3>').replace('card suave mt', 'card')}
+      <p class="mut centro mt"><small>Esto es personal: no lo ven los demás integrantes de tu familia.</small></p>`;
+  }
+
   if (sub === 'guia') {
     cuerpo = `
+    <div class="card"><h2>⏰ Cómo repartir el día</h2>
+      <ul><li><b>Mañana y mediodía:</b> lo más completo. Un buen desayuno y un almuerzo equilibrado.</li>
+      <li><b>Colación:</b> si pasan más de 4 horas entre comidas o llegas al almuerzo con mucha hambre, una fruta o un yogur a media mañana.</li>
+      <li><b>Tarde y noche:</b> merienda simple y cena liviana, idealmente 2 o 3 horas antes de dormir.</li>
+      <li>Adapta los horarios a tu rutina con el botón <b>⏰ Horarios</b> del plan, y las porciones a lo que te indique tu profesional.</li></ul></div>
     <div class="card"><h2>🍽️ El plato</h2>
       <p><b>Mitad</b> verduras · <b>un cuarto</b> proteína (pollo, pescado, huevo, legumbres, carne magra) · <b>un cuarto</b> cereal integral, papa o batata.</p></div>
     <div class="card"><h2>⬇️ Para bajar triglicéridos</h2>
@@ -1105,6 +1272,29 @@ async function vistaComida() {
     ex.has(k) ? ex.delete(k) : ex.add(k);
     S.usuario.perfil.excluye = [...ex]; render();
   }));
+  const hb = $('#horarios'); if (hb) hb.onclick = () => {
+    const hs = { ...HORARIOS_DEF, ...(perfil().horarios || {}) };
+    modal(`<div class="fila entre"><h2 class="mb0">⏰ Mis horarios</h2><button class="btn chico borde" data-x>✕</button></div>
+      <p class="mut">Ponlos según tu rutina. Se muestran en el plan y en Hoy.</p>
+      ${TODOS_MOMENTOS.map(([m, nom, ic]) => `<div class="fila entre" style="margin:8px 0"><span>${ic} ${nom}</span><input class="i" type="time" data-h="${m}" value="${hs[m]}" style="max-width:140px"></div>`).join('')}
+      <div class="check ${perfil().colacion !== false ? 'ok' : ''}" id="h-col"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">Incluir colación de media mañana</span></div>
+      <button class="btn full mt" data-ok>Guardar</button>`, (o) => {
+      $('[data-x]', o).onclick = () => o.remove();
+      $('#h-col', o).onclick = (e) => e.currentTarget.classList.toggle('ok');
+      $('[data-ok]', o).onclick = async () => {
+        const horarios = {}; o.querySelectorAll('[data-h]').forEach((i) => (horarios[i.dataset.h] = i.value || HORARIOS_DEF[i.dataset.h]));
+        await guardarPerfil({ horarios, colacion: $('#h-col', o).classList.contains('ok') });
+        o.remove(); toast('Horarios guardados ✓'); render();
+      };
+    });
+  };
+  if (sub === 'nutri') {
+    cajaAdjuntos($('#app'), { ambito: 'nutricion' });
+    $('#n-ok').onclick = async () => {
+      await guardarPerfil({ nutri: { nombre: $('#n-nombre').value.trim(), proximo: $('#n-proximo').value, pautas: $('#n-pautas').value.trim() } });
+      toast('Guardado ✓');
+    };
+  }
   const fc = $('#fam-crear'); if (fc) fc.onclick = async () => {
     const r = await api('POST', '/api/familia', { nombre: $('#fam-nom').value || 'Mi familia' });
     S.familia = r.familia; S.miembros = r.miembros; toast('Familia creada ✓'); render();
@@ -1641,10 +1831,12 @@ const CAMPOS = {
     { k: 'presion', l: 'Presión arterial (si te la tomaste)', t: 'text', ph: 'Ej.: 120/80' },
   ],
   estudio: [
-    { k: 'tipo', l: 'Tipo de estudio', t: 'select', op: ['Análisis de sangre', 'Ecocardiograma', 'Electrocardiograma', 'Ecografía', 'Estudio del sueño', 'Imagen (RX, TAC, RMN)', 'Otro'] },
+    { k: 'tipo', l: 'Tipo de estudio', t: 'select', op: ['Análisis de sangre', 'Composición corporal (InBody)', 'Ecocardiograma', 'Electrocardiograma', 'Ecografía', 'Estudio del sueño', 'Imagen (RX, TAC, RMN)', 'Otro'] },
     { k: 'lugar', l: 'Lugar / laboratorio', t: 'text' },
-    { t: 'titulo', l: 'Valores (si es análisis de sangre)' },
-    ...LAB.map((v) => ({ k: v.k, l: `${v.n} (${v.u})`, t: 'number' })),
+    { t: 'titulo', l: 'Valores del análisis', g: 'lab' },
+    ...LAB.map((v) => ({ k: v.k, l: `${v.n} (${v.u})`, t: 'number', g: 'lab' })),
+    { t: 'titulo', l: 'Valores del InBody', g: 'inbody' },
+    ...INBODY.map((v) => ({ k: v.k, l: v.n + (v.u ? ` (${v.u})` : ''), t: 'number', g: 'inbody' })),
     { k: 'resultado', l: 'Resultado / conclusión del informe', t: 'textarea' },
   ],
 };
@@ -1679,6 +1871,7 @@ async function vistaSalud() {
     const [est, con, sue, pes, epi, psi, ej] = await Promise.all(['estudio', 'consulta', 'sueno', 'peso', 'episodio', 'psicologo', 'ejercicio'].map((t) => registros(t)));
     const lab = est.filter((r) => r.datos.tipo === 'Análisis de sangre');
     const ult = lab[0];
+    const uib = est.filter(ES_INBODY)[0];
     const s14 = sue.filter((r) => difDias(hoy, r.fecha) < 14);
     const hs = s14.map((r) => horasSueno(r.datos)).filter((x) => x !== null);
     const prom = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
@@ -1698,6 +1891,7 @@ async function vistaSalud() {
     </div>
     ${ult ? `<div class="card"><h3>🧪 Último análisis (${fechaCorta(ult.fecha)})</h3><table class="val"><tr><th>Valor</th><th>Resultado</th><th>Ref.</th><th></th></tr>
       ${LAB.filter((v) => ult.datos[v.k] != null).map((v) => `<tr><td>${v.n}</td><td><b>${ult.datos[v.k]}</b></td><td><small>${v.ref}</small></td><td>${estadoLab(v, ult.datos[v.k])}</td></tr>`).join('')}</table></div>` : ''}
+    ${uib ? `<div class="card"><h3>⚖️ Último InBody (${fechaCorta(uib.fecha)})</h3><table class="val">${INBODY.filter((v) => uib.datos[v.k] != null).map((v) => `<tr><td>${v.n}</td><td><b>${uib.datos[v.k]}</b> ${v.u}</td></tr>`).join('')}</table></div>` : ''}
     <button class="btn full" id="res-med">📤 Generar resumen para llevar al médico</button>
     <div class="nota">Las referencias son generales para adultos. Quien interpreta tus valores es tu médico.</div>`;
     setTimeout(() => {
@@ -1707,6 +1901,7 @@ async function vistaSalud() {
         L.push(`RESUMEN DE SALUD — ${S.usuario.nombre} — ${fechaCorta(hoy)}`);
         if (perfil().edad) L.push(`Edad: ${perfil().edad} · Altura: ${perfil().altura || '?'} cm`);
         if (p) L.push(`Peso: ${p.datos.peso} kg${p.datos.cintura ? ' · Cintura: ' + p.datos.cintura + ' cm' : ''}${p.datos.presion ? ' · Presión: ' + p.datos.presion : ''} (${fechaCorta(p.fecha)})`);
+        if (uib) { L.push(`\nÚltimo InBody (${fechaCorta(uib.fecha)}):`); INBODY.forEach((v) => uib.datos[v.k] != null && L.push(`• ${v.n}: ${uib.datos[v.k]} ${v.u}`)); }
         if (ult) { L.push(`\nÚltimo análisis (${fechaCorta(ult.fecha)}):`); LAB.forEach((v) => ult.datos[v.k] != null && L.push(`• ${v.n}: ${ult.datos[v.k]} ${v.u}`)); }
         if (s14.length) {
           L.push(`\nSueño (últimas ${s14.length} noches registradas):`);
@@ -1734,8 +1929,10 @@ async function vistaSalud() {
   } else {
     const regs = await registros(sub);
     const linea = {
-      estudio: (r) => `<b>${esc(r.datos.tipo)}</b>${r.datos.lugar ? ' · ' + esc(r.datos.lugar) : ''}<br><small>${r.datos.resultado ? esc(r.datos.resultado.slice(0, 100)) : LAB.filter((v) => r.datos[v.k] != null).map((v) => v.n.split(' ')[0] + ' ' + r.datos[v.k]).join(' · ')}</small>`,
-      consulta: (r) => `<b>${esc(r.datos.especialidad)}</b>${r.datos.profesional ? ' · ' + esc(r.datos.profesional) : ''}<br><small>${esc((r.datos.dijo || r.datos.motivo || '').slice(0, 100))}</small>`,
+      estudio: (r) => `<b>${esc(r.datos.tipo)}</b>${r.datos.lugar ? ' · ' + esc(r.datos.lugar) : ''}${r.adjuntos ? ` <span class="badge">📎 ${r.adjuntos}</span>` : ''}<br><small>${r.datos.resultado ? esc(r.datos.resultado.slice(0, 100))
+        : ES_INBODY(r) ? [r.datos.ib_peso != null && `Peso ${r.datos.ib_peso} kg`, r.datos.ib_grasa_pct != null && `Grasa ${r.datos.ib_grasa_pct}%`, r.datos.ib_musculo != null && `Músculo ${r.datos.ib_musculo} kg`].filter(Boolean).join(' · ')
+        : LAB.filter((v) => r.datos[v.k] != null).map((v) => v.n.split(' ')[0] + ' ' + r.datos[v.k]).join(' · ')}</small>`,
+      consulta: (r) => `<b>${esc(r.datos.especialidad)}</b>${r.datos.profesional ? ' · ' + esc(r.datos.profesional) : ''}${r.adjuntos ? ` <span class="badge">📎 ${r.adjuntos}</span>` : ''}<br><small>${esc((r.datos.dijo || r.datos.motivo || '').slice(0, 100))}</small>`,
       psicologo: (r) => `<b>Sesión</b> ${r.datos.animo ? ANIMOS[r.datos.animo - 1] : ''}<br><small>${esc((r.datos.aprendi || r.datos.temas || '').slice(0, 100))}</small>${r.datos.tarea ? `<br><small>📝 ${esc(r.datos.tarea.slice(0, 80))}</small>` : ''}`,
       sueno: (r) => { const h = horasSueno(r.datos); return `<b>${h !== null ? h.toFixed(1) + ' h' : '—'}</b> · ${r.datos.despertares ?? '?'} despertares ${r.datos.calidad ? ['😫', '😴', '😐', '🙂', '😃'][r.datos.calidad - 1] : ''}<br><small>${[r.datos.ronque && 'ronquido', r.datos.boca_seca && 'boca seca', r.datos.pausas && 'pausas'].filter(Boolean).join(' · ')}</small>`; },
       peso: (r) => `<b>${esc(r.datos.peso ?? '—')} kg</b>${r.datos.cintura ? ' · ' + esc(r.datos.cintura) + ' cm' : ''}${r.datos.presion ? ' · ' + esc(r.datos.presion) : ''}`,
@@ -1746,10 +1943,20 @@ async function vistaSalud() {
       if (vals.length >= 2) extra = `<div class="card"><h3>Evolución del peso</h3>${sparkline(vals)}<small>${vals[0]} → ${vals[vals.length - 1]} kg</small></div>`;
     }
     if (sub === 'estudio') {
+      const ib = regs.filter(ES_INBODY);
+      if (ib.length) {
+        const [a, b] = ib;
+        const serie = (k) => ib.filter((r) => r.datos[k] != null).slice(0, 12).reverse().map((r) => Number(r.datos[k]));
+        const gr = serie('ib_grasa_pct'), mu = serie('ib_musculo');
+        extra += `<div class="card"><h3>⚖️ Composición corporal (InBody)</h3><table class="val"><tr><th>Valor</th>${b ? `<th>${fechaCorta(b.fecha)}</th>` : ''}<th>${fechaCorta(a.fecha)}</th></tr>
+          ${INBODY.filter((v) => a.datos[v.k] != null || (b && b.datos[v.k] != null)).map((v) => `<tr><td>${v.n}</td>${b ? `<td>${b.datos[v.k] ?? '—'}</td>` : ''}<td><b>${a.datos[v.k] ?? '—'}</b> ${b ? flechaInbody(v, a.datos[v.k], b.datos[v.k]) : ''}</td></tr>`).join('')}</table>
+          ${b ? '<p class="mut mb0 mt"><small>Verde: va en buena dirección (más músculo, menos grasa). Rojo: al revés.</small></p>' : ''}
+          ${gr.length >= 2 ? `<p class="mt mb0"><small>% de grasa</small></p>${sparkline(gr)}` : ''}${mu.length >= 2 ? `<p class="mb0"><small>Masa muscular</small></p>${sparkline(mu)}` : ''}</div>`;
+      }
       const lab = regs.filter((r) => r.datos.tipo === 'Análisis de sangre');
       if (lab.length >= 2) {
         const [a, b] = lab;
-        extra = `<div class="card"><h3>Comparación de análisis</h3><table class="val"><tr><th>Valor</th><th>${fechaCorta(b.fecha)}</th><th>${fechaCorta(a.fecha)}</th><th></th></tr>
+        extra += `<div class="card"><h3>Comparación de análisis</h3><table class="val"><tr><th>Valor</th><th>${fechaCorta(b.fecha)}</th><th>${fechaCorta(a.fecha)}</th><th></th></tr>
           ${LAB.filter((v) => a.datos[v.k] != null || b.datos[v.k] != null).map((v) => {
             const va = a.datos[v.k], vb = b.datos[v.k];
             const fl = va != null && vb != null ? (va < vb ? '↓' : va > vb ? '↑' : '=') : '';

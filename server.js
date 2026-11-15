@@ -45,7 +45,10 @@ app.use((req, res, next) => {
   res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'X-Frame-Options': 'DENY' });
   next();
 });
-app.use(express.json({ limit: '2mb' }));
+// Los adjuntos viajan en base64: esa ruta acepta cuerpos más grandes
+const jsonNormal = express.json({ limit: '2mb' });
+const jsonGrande = express.json({ limit: '15mb' });
+app.use((req, res, next) => (req.method === 'POST' && req.path === '/api/archivos' ? jsonGrande : jsonNormal)(req, res, next));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ---------- helpers ----------
@@ -213,13 +216,14 @@ app.post('/api/restablecer', limite(10, 30), wrap(async (req, res) => {
 
 // ---------- mis datos: descargar y borrar cuenta ----------
 app.get('/api/exportar', auth, wrap(async (req, res) => {
-  const [u, d, r] = await Promise.all([
+  const [u, d, r, a] = await Promise.all([
     pool.query('SELECT nombre, email, perfil, creado, acepto_terminos FROM usuarios WHERE id=$1', [req.uid]),
     pool.query('SELECT fecha, datos FROM dias WHERE usuario_id=$1 ORDER BY fecha', [req.uid]),
-    pool.query('SELECT tipo, fecha, datos FROM registros WHERE usuario_id=$1 ORDER BY tipo, fecha', [req.uid]),
+    pool.query('SELECT id, tipo, fecha, datos FROM registros WHERE usuario_id=$1 ORDER BY tipo, fecha', [req.uid]),
+    pool.query("SELECT registro_id, ambito, nombre, tipo, encode(datos, 'base64') AS base64 FROM archivos WHERE usuario_id=$1 ORDER BY id", [req.uid]),
   ]);
   res.set('Content-Disposition', 'attachment; filename="mis-datos-vamos-pa-arriba.json"');
-  res.json({ exportado: new Date().toISOString(), cuenta: u.rows[0], dias: d.rows, registros: r.rows });
+  res.json({ exportado: new Date().toISOString(), cuenta: u.rows[0], dias: d.rows, registros: r.rows, archivos: a.rows });
 }));
 
 app.delete('/api/cuenta', auth, wrap(async (req, res) => {
@@ -332,7 +336,8 @@ app.get('/api/registros', auth, wrap(async (req, res) => {
   if (!TIPOS.includes(tipo)) return res.status(400).json({ error: 'Tipo inválido' });
   const limite = Math.min(parseInt(req.query.limite, 10) || 200, 1000);
   const r = await pool.query(
-    'SELECT id, tipo, fecha, datos FROM registros WHERE usuario_id=$1 AND tipo=$2 ORDER BY fecha DESC, id DESC LIMIT $3',
+    `SELECT r.id, r.tipo, r.fecha, r.datos, (SELECT count(*)::int FROM archivos a WHERE a.registro_id = r.id) AS adjuntos
+     FROM registros r WHERE r.usuario_id=$1 AND r.tipo=$2 ORDER BY r.fecha DESC, r.id DESC LIMIT $3`,
     [req.uid, tipo, limite]);
   res.json(r.rows);
 }));
@@ -360,6 +365,50 @@ app.put('/api/registros/:id', auth, wrap(async (req, res) => {
 
 app.delete('/api/registros/:id', auth, wrap(async (req, res) => {
   await pool.query('DELETE FROM registros WHERE id=$1 AND usuario_id=$2', [req.params.id, req.uid]);
+  res.json({ ok: true });
+}));
+
+// ---------- archivos adjuntos ----------
+const TIPOS_ARCHIVO = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const MAX_ARCHIVO = 10 * 1024 * 1024;
+const AMBITOS = ['nutricion'];
+
+app.get('/api/archivos', auth, wrap(async (req, res) => {
+  const { registro_id, ambito } = req.query;
+  let r;
+  if (registro_id) r = await pool.query('SELECT id, nombre, tipo, tamano, creado FROM archivos WHERE usuario_id=$1 AND registro_id=$2 ORDER BY id', [req.uid, registro_id]);
+  else if (AMBITOS.includes(ambito)) r = await pool.query('SELECT id, nombre, tipo, tamano, creado FROM archivos WHERE usuario_id=$1 AND ambito=$2 ORDER BY id DESC', [req.uid, ambito]);
+  else return res.status(400).json({ error: 'Falta registro o ámbito' });
+  res.json(r.rows);
+}));
+
+app.post('/api/archivos', auth, wrap(async (req, res) => {
+  const { nombre, tipo, base64, registro_id, ambito } = req.body || {};
+  if (!TIPOS_ARCHIVO.includes(tipo)) return res.status(400).json({ error: 'Solo se aceptan PDF o fotos (JPG, PNG)' });
+  const buf = Buffer.from(String(base64 || ''), 'base64');
+  if (!buf.length) return res.status(400).json({ error: 'El archivo está vacío' });
+  if (buf.length > MAX_ARCHIVO) return res.status(400).json({ error: 'El archivo supera los 10 MB' });
+  if (registro_id) {
+    const ok = await pool.query('SELECT 1 FROM registros WHERE id=$1 AND usuario_id=$2', [registro_id, req.uid]);
+    if (!ok.rowCount) return res.status(404).json({ error: 'Registro no encontrado' });
+  } else if (!AMBITOS.includes(ambito)) return res.status(400).json({ error: 'Falta registro o ámbito' });
+  const total = await pool.query('SELECT COALESCE(sum(tamano),0)::bigint AS t FROM archivos WHERE usuario_id=$1', [req.uid]);
+  if (Number(total.rows[0].t) + buf.length > 300 * 1024 * 1024) return res.status(400).json({ error: 'Llegaste al límite de 300 MB de archivos' });
+  const r = await pool.query(
+    'INSERT INTO archivos (usuario_id, registro_id, ambito, nombre, tipo, tamano, datos) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, nombre, tipo, tamano, creado',
+    [req.uid, registro_id || null, registro_id ? null : ambito, String(nombre || 'archivo').slice(0, 120), tipo, buf.length, buf]);
+  res.json(r.rows[0]);
+}));
+
+app.get('/api/archivos/:id', auth, wrap(async (req, res) => {
+  const r = await pool.query('SELECT nombre, tipo, datos FROM archivos WHERE id=$1 AND usuario_id=$2', [req.params.id, req.uid]);
+  if (!r.rowCount) return res.status(404).json({ error: 'No encontrado' });
+  res.set({ 'Content-Type': r.rows[0].tipo, 'Content-Disposition': `inline; filename="${encodeURIComponent(r.rows[0].nombre)}"`, 'Cache-Control': 'private, no-store' });
+  res.send(r.rows[0].datos);
+}));
+
+app.delete('/api/archivos/:id', auth, wrap(async (req, res) => {
+  await pool.query('DELETE FROM archivos WHERE id=$1 AND usuario_id=$2', [req.params.id, req.uid]);
   res.json({ ok: true });
 }));
 

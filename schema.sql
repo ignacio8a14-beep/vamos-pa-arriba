@@ -55,3 +55,17 @@ CREATE TABLE IF NOT EXISTS registros (
 
 CREATE INDEX IF NOT EXISTS idx_registros_usuario_tipo_fecha
   ON registros (usuario_id, tipo, fecha DESC);
+
+-- Archivos adjuntos (PDF, fotos): de un registro (estudio, consulta) o de un ámbito (nutricion)
+CREATE TABLE IF NOT EXISTS archivos (
+  id          SERIAL PRIMARY KEY,
+  usuario_id  INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  registro_id INT REFERENCES registros(id) ON DELETE CASCADE,
+  ambito      TEXT,
+  nombre      TEXT NOT NULL,
+  tipo        TEXT NOT NULL,
+  tamano      INT NOT NULL,
+  datos       BYTEA NOT NULL,
+  creado      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_archivos_usuario ON archivos (usuario_id, registro_id);
