@@ -51,6 +51,10 @@ textarea.i{min-height:80px;resize:vertical}
 .check:last-child{border-bottom:none}
 .check .caja{width:28px;height:28px;border-radius:9px;border:2px solid var(--borde);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;color:#fff}
 .check.ok .caja{background:var(--verde);border-color:var(--verde)}
+.check .caja{color:transparent}.check.ok .caja{color:#fff}
+.full-screen .chip{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5);color:#fff}
+.full-screen .chip.on{background:#fff;border-color:#fff;color:var(--verde)}
+.full-screen .check.ok .caja{background:#fff;border-color:#fff;color:var(--verde)}
 .check.ok .txt{color:var(--gris);text-decoration:line-through}
 .check .txt{flex:1}
 .nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--borde);display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
@@ -100,6 +104,9 @@ table.val th{color:var(--gris);font-weight:600;font-size:.8rem}
 .centro{text-align:center}
 .mt{margin-top:12px}.mb0{margin-bottom:0}
 .oculto{display:none!important}
+.landing{max-width:560px;margin:0 auto}
+.landing .card.mb0 b{display:block;margin-top:2px}
+.legal h3{margin-top:14px}.legal p{font-size:.95rem}
 .nota{font-size:.85rem;color:var(--gris);background:#fff;border-left:3px solid var(--ambar);padding:8px 10px;border-radius:8px;margin:8px 0}
 .prog{height:10px;background:var(--borde);border-radius:999px;overflow:hidden}
 .prog div{height:100%;background:var(--verde);transition:width .3s}
@@ -179,6 +186,7 @@ const S = {
   sub: {},            // sub-pestañas por vista
   dias: {},           // cache fecha -> datos
   familia: null, miembros: [],
+  config: {},
   cache: {},          // tipo -> registros
 };
 
@@ -395,7 +403,7 @@ const FRASES = [
   'La calma también se entrena, como un músculo.',
   'Lo que hiciste ayer cuenta. Lo de hoy, también.',
   'Si hoy cuesta, haz la versión corta. Igual suma.',
-  'Tu cuerpo ya pasó por estudios que salieron bien. Puedes confiar un poco más en él.',
+  'Tu cuerpo hace mucho por ti todos los días. Trátalo con cariño.',
   'Primero respirar, después pensar.',
   'Disfrutar el presente también es parte de sanar.',
 ];
@@ -416,39 +424,245 @@ const LAB = [
 /* =========================================================
    LOGIN
    ========================================================= */
+function pieLegal() {
+  return `<p class="centro mut mt" style="font-size:.82rem">
+    <a href="#" onclick="verLegal('privacidad');return false" style="color:var(--gris)">Privacidad</a> ·
+    <a href="#" onclick="verLegal('terminos');return false" style="color:var(--gris)">Términos</a>
+    ${S.config.soporte ? ` · <a href="mailto:${esc(S.config.soporte)}" style="color:var(--gris)">Soporte</a>` : ''}
+    <br>Vamos Pa' Arriba · I8A Project</p>`;
+}
+
 function vistaLogin(modo = 'login') {
   $('#nav').classList.add('oculto');
   const reg = modo === 'registro';
-  $('#app').innerHTML = `
-  <div class="login">
-    <div class="logo">🌱</div>
-    <h1 class="centro">Vamos Pa' Arriba</h1>
-    <p class="centro mut">Cuerpo, mente y espíritu, un día a la vez.</p>
-    <div class="card mt">
-      ${reg ? `<label class="f">Tu nombre</label><input class="i" id="l-nombre" autocomplete="name">` : ''}
+  const olvido = modo === 'olvido';
+  const reset = modo === 'reset';
+  let form = '';
+  if (reset) {
+    form = `<h2>Crea tu nueva contraseña</h2>
+      <label class="f">Contraseña nueva</label><input class="i" id="l-pass" type="password" autocomplete="new-password">
+      <label class="f">Repítela</label><input class="i" id="l-pass2" type="password" autocomplete="new-password">
+      <button class="btn full mt" id="l-ok">Guardar y entrar</button>`;
+  } else if (olvido) {
+    form = `<h2>¿Olvidaste tu contraseña?</h2>
+      <p class="mut">Escribe tu email y te mandamos un link para crear una nueva.</p>
       <label class="f">Email</label><input class="i" id="l-email" type="email" autocomplete="email">
-      <label class="f">Contraseña</label><input class="i" id="l-pass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}">
-      ${reg ? `<label class="f">Código de invitación</label><input class="i" id="l-codigo">` : ''}
+      <button class="btn full mt" id="l-ok">Enviarme el link</button>
+      <p class="centro mt mb0"><a href="#" data-modo="login" style="color:var(--verde)">Volver</a></p>`;
+  } else {
+    form = `<h2>${reg ? 'Crea tu cuenta gratis' : 'Entrar'}</h2>
+      ${reg ? `<label class="f">Tu nombre</label><input class="i" id="l-nombre" autocomplete="given-name">` : ''}
+      <label class="f">Email</label><input class="i" id="l-email" type="email" autocomplete="email">
+      <label class="f">Contraseña${reg ? ' (mínimo 6 caracteres)' : ''}</label><input class="i" id="l-pass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}">
+      ${reg && S.config.registroConCodigo ? `<label class="f">Código de invitación</label><input class="i" id="l-codigo">` : ''}
+      ${reg ? `<label class="check" style="border:none;align-items:flex-start" id="l-acepta" onclick="if(event.target.tagName!=='A')this.classList.toggle('ok')"><span class="caja">✓</span>
+        <span style="font-size:.9rem">Leí y acepto la <a href="#" onclick="verLegal('privacidad');return false" style="color:var(--verde)">política de privacidad</a> y los <a href="#" onclick="verLegal('terminos');return false" style="color:var(--verde)">términos</a>. Entiendo que puedo cargar datos de mi salud de forma voluntaria y que la app no reemplaza a un profesional.</span></label>` : ''}
       <button class="btn full mt" id="l-ok">${reg ? 'Crear cuenta' : 'Entrar'}</button>
-      <p class="centro mt mb0"><a href="#" id="l-cambio" style="color:var(--verde)">${reg ? 'Ya tengo cuenta' : 'Crear una cuenta nueva'}</a></p>
+      ${!reg ? `<p class="centro mt mb0"><a href="#" data-modo="olvido" style="color:var(--gris);font-size:.9rem">Olvidé mi contraseña</a></p>` : ''}
+      <p class="centro mt mb0"><a href="#" data-modo="${reg ? 'login' : 'registro'}" style="color:var(--verde);font-weight:600">${reg ? 'Ya tengo cuenta' : 'Crear una cuenta nueva'}</a></p>`;
+  }
+
+  $('#app').innerHTML = `
+  <div class="landing">
+    <div class="centro" style="padding:26px 0 8px">
+      <img src="/icon.svg" alt="" width="72" height="72" style="border-radius:18px">
+      <h1 style="font-size:1.9rem;margin-top:10px">Vamos Pa' Arriba</h1>
+      <p class="mut" style="font-size:1.05rem">Cuerpo, mente y espíritu, un día a la vez.<br>Sin gimnasio, sin nutricionista caro, a tu ritmo.</p>
     </div>
+    ${!reset && !olvido ? `<div class="grid2" style="margin:10px 0 14px">
+      <div class="card mb0"><div style="font-size:1.6rem">🥗</div><b>Comida</b><br><small class="mut">Plan semanal casero y económico para toda la familia, con lista de compras.</small></div>
+      <div class="card mb0"><div style="font-size:1.6rem">🚶</div><b>Movimiento</b><br><small class="mut">Rutinas en casa o en el parque, con temporizador y 6 niveles.</small></div>
+      <div class="card mb0"><div style="font-size:1.6rem">🕊️</div><b>Calma</b><br><small class="mut">Respiración, meditación, oración y ayuda para dormir mejor.</small></div>
+      <div class="card mb0"><div style="font-size:1.6rem">📋</div><b>Mi salud</b><br><small class="mut">Estudios, consultas y sueño en un lugar, con resumen para tu médico.</small></div>
+    </div>` : ''}
+    <div class="card" id="form-card">${form}</div>
+    ${pieLegal()}
   </div>`;
-  $('#l-cambio').onclick = (e) => { e.preventDefault(); vistaLogin(reg ? 'login' : 'registro'); };
-  $('#l-ok').onclick = async () => {
-    try {
-      const body = { email: $('#l-email').value, password: $('#l-pass').value };
-      if (reg) { body.nombre = $('#l-nombre').value; body.codigo = $('#l-codigo').value; }
-      const r = await api('POST', reg ? '/api/registro' : '/api/login', body);
-      S.token = r.token; localStorage.setItem('vpa_token', r.token);
-      S.usuario = r.usuario;
-      iniciar();
-    } catch (e) { toast(e.message); }
+
+  document.querySelectorAll('[data-modo]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); vistaLogin(a.dataset.modo); }));
+  const entrar = (r) => {
+    S.token = r.token; localStorage.setItem('vpa_token', r.token);
+    S.usuario = r.usuario;
+    history.replaceState(null, '', '/');
+    iniciar();
   };
+  $('#l-ok').onclick = async () => {
+    const btn = $('#l-ok'); btn.disabled = true;
+    try {
+      if (reset) {
+        if ($('#l-pass').value !== $('#l-pass2').value) throw new Error('Las contraseñas no coinciden');
+        entrar(await api('POST', '/api/restablecer', { token: S.resetToken, password: $('#l-pass').value }));
+        toast('Contraseña nueva guardada ✓');
+      } else if (olvido) {
+        const r = await api('POST', '/api/recuperar', { email: $('#l-email').value });
+        $('#form-card').innerHTML = `<h2>📬 Revisa tu correo</h2><p>${esc(r.mensaje)}</p><button class="btn full sec" data-modo="login">Volver</button>`;
+        $('#form-card [data-modo]').onclick = () => vistaLogin('login');
+      } else {
+        const body = { email: $('#l-email').value, password: $('#l-pass').value };
+        if (reg) {
+          body.nombre = $('#l-nombre').value;
+          body.acepta = $('#l-acepta').classList.contains('ok');
+          if (!body.acepta) throw new Error('Para seguir, marca que aceptas la privacidad y los términos');
+          const cod = $('#l-codigo'); if (cod) body.codigo = cod.value;
+        }
+        entrar(await api('POST', reg ? '/api/registro' : '/api/login', body));
+      }
+    } catch (e) { toast(e.message); }
+    btn.disabled = false;
+  };
+  document.querySelectorAll('#form-card input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#l-ok').click(); }));
 }
+
 function salir() {
   S.token = null; S.usuario = null; S.dias = {}; S.cache = {}; S.familia = null; S.miembros = [];
   localStorage.removeItem('vpa_token');
+  document.querySelectorAll('.overlay,.full-screen').forEach((x) => x.remove());
   vistaLogin();
+}
+
+/* =========================================================
+   TEXTOS LEGALES (borrador base: hacerlos revisar por un abogado antes de vender)
+   ========================================================= */
+function textoLegal(cual) {
+  const contacto = S.config.soporte ? `<a href="mailto:${esc(S.config.soporte)}">${esc(S.config.soporte)}</a>` : 'el email de soporte informado en la app';
+  if (cual === 'privacidad') return `
+    <h2>Política de privacidad</h2><p class="mut">Versión 1 · noviembre de 2026</p>
+    <h3>¿Quién es responsable de tus datos?</h3>
+    <p>I8A Project, con domicilio en Junín, provincia de Buenos Aires, Argentina. Contacto: ${contacto}.</p>
+    <h3>¿Qué datos guardamos?</h3>
+    <p><b>De tu cuenta:</b> nombre, email y contraseña (guardada cifrada, nadie puede leerla).<br>
+    <b>Lo que tú decides cargar:</b> hábitos, comidas, ejercicio, sueño, peso, estudios médicos, consultas, sesiones de psicología, momentos de ansiedad, oraciones y notas. Parte de esto son <b>datos de salud</b>, que la Ley 25.326 considera datos sensibles.</p>
+    <p>Cargar datos de salud es <b>siempre voluntario</b>: nadie puede obligarte a darlos y puedes usar la app sin cargarlos.</p>
+    <h3>¿Para qué los usamos?</h3>
+    <p>Solo para que la app funcione para ti: mostrarte tu información, armar tu plan de comidas y tus resúmenes. <b>No vendemos, no alquilamos ni cedemos tus datos</b>, y no los usamos para publicidad.</p>
+    <p>Para mejorar el servicio podemos ver cifras generales sin identificar a nadie (por ejemplo, cuántas personas usan la app).</p>
+    <h3>Familia</h3>
+    <p>Si te unes a una familia, los demás integrantes ven tu nombre y los alimentos que marcaste que no comes. <b>No ven</b> tus datos de salud, hábitos ni notas.</p>
+    <h3>¿Dónde se guardan y cómo se protegen?</h3>
+    <p>En servidores contratados por I8A Project. La conexión viaja cifrada (HTTPS), las contraseñas se guardan cifradas y el acceso al servidor está restringido.</p>
+    <h3>Tus derechos</h3>
+    <p>Puedes ver, corregir y borrar tus datos cuando quieras desde la app: en ⚙️ Ajustes tienes <b>Descargar mis datos</b> y <b>Borrar mi cuenta</b>. También puedes pedirlo escribiendo a ${contacto}.</p>
+    <p>Si borras tu cuenta, eliminamos tus datos de la base en ese momento. Las copias de seguridad se sobrescriben con el tiempo.</p>
+    <p style="font-size:.85rem">El titular de los datos personales tiene la facultad de ejercer el derecho de acceso a los mismos en forma gratuita a intervalos no inferiores a seis meses, salvo que se acredite un interés legítimo al efecto conforme lo establecido en el artículo 14, inciso 3 de la Ley N° 25.326. La Agencia de Acceso a la Información Pública, en su carácter de Órgano de Control de la Ley N° 25.326, tiene la atribución de atender las denuncias y reclamos que interpongan quienes resulten afectados en sus derechos por incumplimiento de las normas vigentes en materia de protección de datos personales.</p>
+    <h3>Cambios</h3>
+    <p>Si cambiamos esta política te lo vamos a avisar en la app.</p>`;
+  return `
+    <h2>Términos y condiciones</h2><p class="mut">Versión 1 · noviembre de 2026</p>
+    <h3>Qué es Vamos Pa' Arriba</h3>
+    <p>Una herramienta para organizar tus hábitos de alimentación, movimiento, descanso y bienestar, y para llevar un registro personal de tu salud.</p>
+    <h3>No es un servicio médico</h3>
+    <p>La app <b>no diagnostica, no indica tratamientos y no reemplaza</b> a tu médico, nutricionista, psicólogo ni a ningún profesional. Los planes de comida, las rutinas de ejercicio y los ejercicios de respiración son <b>orientaciones generales</b>. Si tienes una enfermedad, tomas medicación, estás embarazada o tienes dudas, consulta con un profesional antes de hacer cambios.</p>
+    <p><b>En una emergencia</b> llama al 107 o al 911, o ve a la guardia más cercana. La app no está pensada para emergencias.</p>
+    <h3>Tu cuenta</h3>
+    <p>La cuenta es personal. Cuida tu contraseña. Si eres menor de 18 años, úsala junto a un adulto responsable.</p>
+    <h3>Tu información</h3>
+    <p>Lo que cargas es tuyo. Puedes descargarlo o borrarlo cuando quieras. Te recomendamos descargar una copia de vez en cuando.</p>
+    <h3>Disponibilidad</h3>
+    <p>Hacemos lo posible para que la app funcione siempre, pero puede haber cortes o errores. Podemos agregar, cambiar o quitar funciones.</p>
+    <h3>Precio</h3>
+    <p>Si en algún momento la app o alguna función pasa a ser paga, te lo vamos a informar antes, con el precio y las condiciones.</p>
+    <h3>Baja</h3>
+    <p>Puedes borrar tu cuenta en cualquier momento desde ⚙️ Ajustes. Podemos suspender cuentas que se usen para dañar el servicio o a otras personas.</p>
+    <h3>Ley aplicable</h3>
+    <p>Estos términos se rigen por las leyes de la República Argentina.</p>`;
+}
+function verLegal(cual) {
+  modal(`<div class="fila entre"><span></span><button class="btn chico borde" data-x>✕</button></div><div class="legal">${textoLegal(cual)}</div>
+    <button class="btn full mt" data-x2>Entendido</button>`, (o) => {
+    $('[data-x]', o).onclick = () => o.remove();
+    $('[data-x2]', o).onclick = () => o.remove();
+  });
+}
+
+/* =========================================================
+   BIENVENIDA (primera vez) Y CONSENTIMIENTO DE CUENTAS VIEJAS
+   ========================================================= */
+function pedirConsentimiento() {
+  return new Promise((resolve) => {
+    const fs = document.createElement('div');
+    fs.className = 'overlay';
+    fs.innerHTML = `<div class="modal"><h2>Actualizamos la privacidad y los términos</h2>
+      <p>Para seguir usando la app necesitamos que los leas y los aceptes.</p>
+      <p><a href="#" data-l="privacidad" style="color:var(--verde)">Leer la política de privacidad</a><br><a href="#" data-l="terminos" style="color:var(--verde)">Leer los términos</a></p>
+      <button class="btn full" data-ok>Acepto</button><button class="btn full borde mt" data-no>Ahora no (cerrar sesión)</button></div>`;
+    document.body.appendChild(fs);
+    fs.querySelectorAll('[data-l]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); verLegal(a.dataset.l); }));
+    $('[data-ok]', fs).onclick = async () => { S.usuario = await api('POST', '/api/aceptar'); fs.remove(); resolve(true); };
+    $('[data-no]', fs).onclick = () => { fs.remove(); salir(); resolve(false); };
+  });
+}
+
+const OBJETIVOS = ['Comer mejor', 'Moverme más', 'Bajar de peso', 'Dormir mejor', 'Bajar el estrés y la ansiedad', 'Ordenar mis estudios médicos', 'Cuidar mi vida espiritual'];
+function bienvenida() {
+  return new Promise((resolve) => {
+    const nombre = (S.usuario.nombre || '').split(' ')[0];
+    const datos = { objetivos: [], oracion: true };
+    let paso = 0;
+    const fs = document.createElement('div');
+    fs.className = 'full-screen';
+    fs.style.justifyContent = 'flex-start';
+    fs.style.paddingTop = '48px';
+    document.body.appendChild(fs);
+    const pintar = () => {
+      let html = `<small style="opacity:.8">Paso ${paso + 1} de 3</small>`;
+      if (paso === 0) html += `
+        <div style="font-size:3rem;margin:12px 0">🌱</div>
+        <h1>¡Hola, ${esc(nombre)}!</h1>
+        <p class="paso-txt">Bienvenido a <b>Vamos Pa' Arriba</b>. La idea es simple: pequeños pasos, todos los días, en cuatro áreas:</p>
+        <div style="text-align:left;max-width:380px;margin:0 auto;line-height:2">🥗 Comer mejor, en familia<br>🚶 Moverte sin gimnasio<br>🕊️ Encontrar calma y dormir mejor<br>📋 Tener tu salud ordenada</div>
+        <p style="opacity:.8;font-size:.88rem;max-width:420px;margin:16px auto">Es una guía para acompañarte. No reemplaza a tu médico ni a otros profesionales.</p>`;
+      if (paso === 1) html += `
+        <h1 style="margin-top:12px">Cuéntanos un poco de ti</h1>
+        <p style="opacity:.85">Todo es opcional y lo puedes cambiar después.</p>
+        <div style="max-width:420px;width:100%;text-align:left">
+          <div class="grid2"><div><label class="f" style="color:#fff">Edad</label><input class="i" id="b-edad" type="number" inputmode="numeric"></div>
+          <div><label class="f" style="color:#fff">Altura (cm)</label><input class="i" id="b-altura" type="number" inputmode="numeric"></div></div>
+          <label class="f" style="color:#fff">Peso (kg)</label><input class="i" id="b-peso" type="number" inputmode="decimal" step="any">
+          <label class="f" style="color:#fff;margin-top:14px">¿Qué quieres lograr? (elige las que quieras)</label>
+          <div>${OBJETIVOS.map((o) => `<span class="chip ${datos.objetivos.includes(o) ? 'on' : ''}" data-ob="${esc(o)}">${esc(o)}</span>`).join('')}</div>
+          <label class="check" style="border:none;color:#fff" id="b-oracion"><span class="caja" style="border-color:#fff">✓</span><span>Incluir un momento de oración en mi día</span></label>
+        </div>`;
+      if (paso === 2) html += `
+        <div style="font-size:3rem;margin:12px 0">🥗</div>
+        <h1>¿Con quién comes?</h1>
+        <p class="paso-txt">El plan de comidas puede ser solo para ti o <b>compartido con tu familia</b>: un único menú y una única lista de compras, sin lo que no come ninguno.</p>
+        <div style="max-width:380px;width:100%">
+          <button class="btn full" data-fin="excluir" style="margin-bottom:10px">Marcar lo que no como</button>
+          <button class="btn full sec" data-fin="familia" style="margin-bottom:10px">Crear o unirme a mi familia</button>
+          <button class="btn full sec" data-fin="hoy">Empezar ya</button>
+        </div>`;
+      html += paso < 2 ? `<div class="fila mt" style="gap:10px">${paso > 0 ? '<button class="btn sec" data-ant>←</button>' : ''}<button class="btn" data-sig>${paso === 0 ? 'Empecemos →' : 'Siguiente →'}</button></div>` : '';
+      fs.innerHTML = html;
+      fs.querySelectorAll('[data-ob]').forEach((c) => (c.onclick = () => {
+        const o = c.dataset.ob; const i = datos.objetivos.indexOf(o);
+        i >= 0 ? datos.objetivos.splice(i, 1) : datos.objetivos.push(o); c.classList.toggle('on');
+      }));
+      const bo = $('#b-oracion', fs);
+      if (bo) { bo.classList.toggle('ok', datos.oracion); bo.onclick = () => { datos.oracion = !datos.oracion; bo.classList.toggle('ok', datos.oracion); }; }
+      const ant = $('[data-ant]', fs); if (ant) ant.onclick = () => { paso--; pintar(); };
+      const sig = $('[data-sig]', fs);
+      if (sig) sig.onclick = async () => {
+        if (paso === 1) {
+          const n = (id) => { const v = $(id, fs).value; return v === '' ? null : Number(String(v).replace(',', '.')); };
+          datos.edad = n('#b-edad'); datos.altura = n('#b-altura'); datos.peso = n('#b-peso');
+        }
+        paso++; pintar();
+      };
+      fs.querySelectorAll('[data-fin]').forEach((b) => (b.onclick = async () => {
+        const cambios = { bienvenida: true, objetivos: datos.objetivos, oracion: datos.oracion };
+        if (datos.edad) cambios.edad = datos.edad;
+        if (datos.altura) cambios.altura = datos.altura;
+        try {
+          await guardarPerfil(cambios);
+          if (datos.peso) await nuevoRegistro('peso', hoyStr(), { peso: datos.peso });
+        } catch (e) { toast(e.message); }
+        fs.remove();
+        const d = b.dataset.fin;
+        if (d === 'excluir' || d === 'familia') { S.sub.comida = d; resolve('comida'); } else resolve('hoy');
+      }));
+    };
+    pintar();
+  });
 }
 
 /* =========================================================
@@ -552,6 +766,7 @@ const HABITOS = [
   ['oracion_n', '🌙', 'Oración de la noche'],
   ['dormir', '😴', 'Rutina antes de dormir'],
 ];
+const habitos = () => HABITOS.filter(([k]) => perfil().oracion !== false || !k.startsWith('oracion'));
 const ANIMOS = ['😣', '😕', '😐', '🙂', '😄'];
 
 function puntosDia(d) {
@@ -582,7 +797,8 @@ async function vistaHoy() {
   await Promise.all([cargarDias(sumarDias(hoy, -60), hoy), cargarFamilia()]);
   const d = S.dias[hoy] || {};
   const h = d.h || {};
-  const hechos = HABITOS.filter(([k]) => h[k]).length;
+  const HAB = habitos();
+  const hechos = HAB.filter(([k]) => h[k]).length;
   const nombre = (S.usuario.nombre || '').split(' ')[0];
   const frase = FRASES[(parseF(hoy).getDate() + parseF(hoy).getMonth()) % FRASES.length];
   const plan = planDeHoy();
@@ -597,8 +813,8 @@ async function vistaHoy() {
     <div class="fila entre mt">
       <div><div class="big">${r}</div><small style="color:#fff;opacity:.85">${r === 1 ? 'día seguido' : 'días seguidos'}</small></div>
       <div style="flex:1;max-width:60%">
-        <small style="color:#fff;opacity:.85">Hábitos de hoy: ${hechos} de ${HABITOS.length}</small>
-        <div class="prog mt"><div style="width:${(hechos / HABITOS.length) * 100}%"></div></div>
+        <small style="color:#fff;opacity:.85">Hábitos de hoy: ${hechos} de ${HAB.length}</small>
+        <div class="prog mt"><div style="width:${(hechos / HAB.length) * 100}%"></div></div>
       </div>
     </div>
     <div class="semana">${semana.map((f) => {
@@ -612,7 +828,7 @@ async function vistaHoy() {
 
   <div class="card">
     <h2>Hábitos</h2>
-    ${HABITOS.map(([k, ic, txt]) => `<div class="check ${h[k] ? 'ok' : ''}" data-h="${k}"><span class="caja">✓</span><span class="txt">${ic} ${txt}</span></div>`).join('')}
+    ${HAB.map(([k, ic, txt]) => `<div class="check ${h[k] ? 'ok' : ''}" data-h="${k}"><span class="caja">✓</span><span class="txt">${ic} ${txt}</span></div>`).join('')}
   </div>
 
   <div class="card">
@@ -789,7 +1005,7 @@ async function vistaComida() {
     if (!S.familia) {
       cuerpo = `<div class="card"><h2>👨‍👩‍👧 Comer todos lo mismo</h2>
         <p>Con una familia, el plan de comidas y la lista de compras son <b>uno solo para toda la casa</b>, y evita lo que no come ninguno.</p>
-        <label class="f">Nombre de la familia</label><input class="i" id="fam-nom" placeholder="Ej.: Familia Ochoa">
+        <label class="f">Nombre de la familia</label><input class="i" id="fam-nom" placeholder="Ej.: Familia Pérez">
         <button class="btn full mt" id="fam-crear">Crear mi familia</button></div>
         <div class="card"><h2>¿Ya te invitaron?</h2><label class="f">Código de la familia</label><input class="i" id="fam-cod" placeholder="Ej.: K7M2QX" style="text-transform:uppercase">
         <button class="btn full sec mt" id="fam-unir">Unirme</button></div>`;
@@ -802,7 +1018,7 @@ async function vistaComida() {
         <div class="card"><h2>Integrantes con cuenta</h2>${S.miembros.map((m) => `<div class="lista-item"><b>${esc(m.nombre)}</b>${m.id === S.usuario.id ? ' <span class="badge">tú</span>' : ''}<br><small>${(m.excluye || []).length ? 'No come: ' + m.excluye.map((k) => (ING[k] || [k])[0]).join(', ') : 'Come de todo'}${m.excluyeTxt ? ' · ' + esc(m.excluyeTxt) : ''}</small></div>`).join('')}</div>
         <div class="card"><h2>¿Cuántos comen en casa?</h2><p class="mut">Contando a quienes no tienen cuenta (por ejemplo los chicos). Se usa para la lista de compras.</p>
           <div class="fila"><button class="btn sec chico" data-pers="-1">−</button><div class="big" style="min-width:60px;text-align:center">${personas()}</div><button class="btn sec chico" data-pers="1">+</button></div></div>
-        <div class="card"><h2>Lo que no come alguien sin cuenta</h2><p class="mut">Por ejemplo, tu hija. Lo que marques acá tampoco aparece en el plan.</p>
+        <div class="card"><h2>Lo que no come alguien sin cuenta</h2><p class="mut">Por ejemplo, un hijo o un abuelo. Lo que marques acá tampoco aparece en el plan.</p>
           ${chipsExclusion(extra, 'x')}</div>
         <button class="btn full borde" id="fam-salir" style="color:var(--rojo)">Salir de la familia</button>`;
     }
@@ -970,7 +1186,7 @@ async function vistaMover() {
 
   <div class="card"><h2>📆 Sugerencia semanal</h2>
     <p>Caminata 5 días · Fuerza (casa o parque) 2 días no seguidos · Abdomen 2 días · Estiramientos cuando quieras.</p>
-    <div class="nota">Si sientes dolor en el pecho, falta de aire fuera de lo normal, mareo o palpitaciones que no ceden al parar: detente y consulta. Si aparece alguna molestia o dolor (por ejemplo en el testículo o en una articulación), baja la intensidad y anótalo para comentarlo con tu médico.</div>
+    <div class="nota">Si sientes dolor en el pecho, falta de aire fuera de lo normal, mareo o palpitaciones que no ceden al parar: detente y consulta. Si aparece alguna molestia o dolor (por ejemplo en una articulación), baja la intensidad y anótalo para comentarlo con tu médico.</div>
   </div>
 
   <div class="card"><h2>Historial</h2>
@@ -1084,7 +1300,7 @@ function finSesion(rutina, nivel, minutos, habito, manual) {
       { k: 'minutos', l: 'Minutos', t: 'number', def: minutos },
       { k: 'sensacion', l: '¿Cómo te sentiste?', t: 'select', op: ['Bien', 'Cansado', 'Me costó'] },
       { k: 'molestia', l: 'Tuve alguna molestia o dolor', t: 'check' },
-      { k: 'nota', l: 'Nota (opcional)', t: 'text', ph: 'Ej.: molestia leve en el testículo izquierdo después de las sentadillas' },
+      { k: 'nota', l: 'Nota (opcional)', t: 'text', ph: 'Ej.: molestia leve en la rodilla después de las sentadillas' },
     ])}
     <button class="btn full mt" data-ok>Guardar</button>`, (o) => {
     $('[data-ok]', o).onclick = async () => {
@@ -1101,7 +1317,7 @@ function finSesion(rutina, nivel, minutos, habito, manual) {
    ========================================================= */
 async function vistaCalma() {
   const sub = S.sub.calma || 'inicio';
-  const tabs = [['inicio', '🕊️ Calma'], ['oracion', '🙏 Oración'], ['noche', '🌙 Dormir'], ['diario', '📖 Mi diario']];
+  const tabs = [['inicio', '🕊️ Calma'], ['oracion', '🙏 Oración'], ['noche', '🌙 Dormir'], ['diario', '📖 Mi diario']].filter(([k]) => k !== 'oracion' || perfil().oracion !== false);
   let cuerpo = '';
 
   if (sub === 'inicio') {
@@ -1113,7 +1329,7 @@ async function vistaCalma() {
       <p class="mut">Inhalas en 4 y exhalas en 6. Exhalar más largo le avisa al cuerpo que está a salvo.</p>
       <div class="fila wrap">${[2, 4, 6, 10].map((m) => `<button class="btn sec chico" data-resp="${m}">${m} min</button>`).join('')}</div></div>
     <div class="card"><h2>🧘 Meditación guiada</h2>
-      <p class="mut">Frases suaves que van apareciendo y una campanita al final. Empieza con 4 minutos, como vienes haciendo.</p>
+      <p class="mut">Frases suaves que van apareciendo y una campanita al final. Si recién empiezas, prueba con 4 minutos.</p>
       <div class="fila wrap">${[4, 7, 10, 15].map((m) => `<button class="btn sec chico" data-med="${m}">${m} min</button>`).join('')}</div></div>
     <div class="card"><h2>⏱️ Silencio</h2>
       <p class="mut">Solo temporizador, sin texto. Campanita al inicio y al final.</p>
@@ -1145,9 +1361,9 @@ async function vistaCalma() {
       ['luz', '💡 Luces bajas en la casa'],
       ['cafe', '☕ Nada de café ni mate después de las 18 h'],
       ['cena', '🍽️ Cena liviana, 2 horas antes de acostarme'],
-      ['agua_mesa', '🥤 Vaso de agua en la mesa de luz (por la boca seca)'],
+      ['agua_mesa', '🥤 Vaso de agua en la mesa de luz'],
       ['respiracion', '🌬️ Respiración 4-6 en la cama'],
-      ['oracion', '🙏 Oración de la noche'],
+      ...(perfil().oracion !== false ? [['oracion', '🙏 Oración de la noche']] : []),
     ];
     const r = d.rutinaNoche || {};
     cuerpo = `
@@ -1361,7 +1577,7 @@ function rescate() {
       <div class="fila mt" style="gap:10px">${i > 0 ? '<button class="btn sec" data-ant>←</button>' : ''}
       ${ps.fin ? '<button class="btn" data-reg>Anotar cómo fue</button><button class="btn sec" data-x2>Cerrar</button>' : '<button class="btn" data-sig>Siguiente →</button>'}</div>
       ${!ps.fin && p.contactoTel ? `<p class="mt"><a href="tel:${esc(p.contactoTel)}" style="color:#fff">📞 Llamar a ${esc(p.contactoNombre || 'mi contacto')}</a></p>` : ''}
-      <p style="opacity:.7;font-size:.82rem;margin-top:22px">Si aparece algo distinto a tus episodios de siempre (por ejemplo debilidad de un lado del cuerpo, dificultad para hablar o dolor de pecho fuerte que no cede), llama al 107 o ve a la guardia.</p>`;
+      <p style="opacity:.7;font-size:.82rem;margin-top:22px">Si aparece algo distinto a tus episodios de siempre (por ejemplo debilidad de un lado del cuerpo, dificultad para hablar o dolor de pecho fuerte que no cede), llama a emergencias (107 o 911) o ve a la guardia.</p>`;
     $('[data-x]', fs).onclick = cerrar;
     const x2 = $('[data-x2]', fs); if (x2) x2.onclick = cerrar;
     const ant = $('[data-ant]', fs); if (ant) ant.onclick = () => { i--; pintar(); };
@@ -1381,11 +1597,11 @@ function rescate() {
 const CAMPOS_EPISODIO = [
   { k: 'hora', l: 'Hora aproximada', t: 'time' },
   { k: 'donde', l: '¿Dónde estabas?', t: 'select', op: ['En casa', 'En la cama / de madrugada', 'En el trabajo', 'En la calle', 'Otro'] },
-  { k: 'pense', l: '¿Qué pensaste primero?', t: 'textarea', ph: 'Ej.: "¿y si es un ACV?"' },
-  { k: 'senti', l: '¿Qué sentiste en el cuerpo?', t: 'textarea', ph: 'Ej.: dolor de cabeza atrás, cara adormecida' },
+  { k: 'pense', l: '¿Qué pensaste primero?', t: 'textarea', ph: 'Ej.: "¿y si me pasa algo grave?"' },
+  { k: 'senti', l: '¿Qué sentiste en el cuerpo?', t: 'textarea', ph: 'Ej.: palpitaciones, falta de aire, hormigueo' },
   { k: 'intensidad', l: 'Intensidad (0 a 10)', t: 'number' },
   { k: 'duracion', l: '¿Cuánto duró?', t: 'text', ph: 'Ej.: 15 minutos' },
-  { k: 'ayudo', l: '¿Qué te ayudó?', t: 'textarea', ph: 'Ej.: que mi esposa me hablara, respirar, ponerme a hacer algo' },
+  { k: 'ayudo', l: '¿Qué te ayudó?', t: 'textarea', ph: 'Ej.: que alguien me hablara, respirar, ponerme a hacer algo' },
 ];
 function formEpisodio(existente) { formRegistro('episodio', 'Momento de ansiedad', CAMPOS_EPISODIO, existente); }
 
@@ -1570,44 +1786,107 @@ const CAMPOS_PERFIL = [
   { k: 'edad', l: 'Edad', t: 'number' },
   { k: 'altura', l: 'Altura (cm)', t: 'number' },
   { t: 'titulo', l: 'Para los momentos de ansiedad' },
-  { k: 'recordatorio', l: 'Algo que necesito recordar en ese momento', t: 'textarea', ph: 'Ej.: Ya me revisaron en la guardia y el corazón salió bien. Las otras veces pasó.' },
-  { k: 'contactoNombre', l: 'Persona de confianza', t: 'text', ph: 'Ej.: mi esposa' },
+  { k: 'recordatorio', l: 'Algo que necesito recordar en ese momento', t: 'textarea', ph: 'Ej.: Ya me revisaron y estoy bien. Las otras veces también pasó.' },
+  { k: 'contactoNombre', l: 'Persona de confianza', t: 'text', ph: 'Ej.: mi pareja, mi hermana' },
   { k: 'contactoTel', l: 'Su teléfono', t: 'tel' },
-  { k: 'planRescate', l: 'Indicaciones de mi psiquiatra / psicólogo para una crisis', t: 'textarea', ph: 'Copia acá lo que te indicaron, tal cual. Ej.: la dosis exacta del rescate que te confirme el psiquiatra.' },
+  { k: 'planRescate', l: 'Indicaciones de mi médico o psicólogo para una crisis', t: 'textarea', ph: 'Copia acá lo que te indicaron, tal cual.' },
 ];
 async function vistaAjustes() {
   const p = { ...perfil() };
+  const oracionOn = p.oracion !== false;
   $('#app').innerHTML = `<div class="top"><button class="btn chico borde" onclick="ir('hoy')">← Volver</button><h1 class="mb0">Ajustes</h1><span></span></div>
-  <div class="card">${htmlCampos(CAMPOS_PERFIL, p)}<button class="btn full mt" id="perf-ok">Guardar</button></div>
+  ${S.usuario.admin ? `<div class="card verde" id="admin"><h2>📊 Panel del dueño</h2><p class="mb0">Cargando…</p></div>` : ''}
+  <div class="card"><h2>Mi perfil</h2>
+    <label class="f">Nombre</label><input class="i" id="aj-nombre" value="${esc(S.usuario.nombre)}">
+    ${htmlCampos(CAMPOS_PERFIL, p)}<button class="btn full mt" id="perf-ok">Guardar</button></div>
+  <div class="card"><h2>Mi día</h2>
+    <div class="check ${oracionOn ? 'ok' : ''}" id="aj-oracion"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🙏 Incluir momentos de oración</span></div>
+    <button class="btn full sec mt" onclick="bienvenida().then(()=>ir('hoy'))">Ver de nuevo la bienvenida</button></div>
   <div class="card"><h2>Contraseña</h2>
-    <label class="f">Actual</label><input class="i" type="password" id="pw-a">
-    <label class="f">Nueva</label><input class="i" type="password" id="pw-n">
-    <button class="btn full sec mt" id="pw-ok">Cambiar contraseña</button></div>
+    <label class="f">Actual</label><input class="i" type="password" id="pw-a" autocomplete="current-password">
+    <label class="f">Nueva</label><input class="i" type="password" id="pw-n" autocomplete="new-password">
+    <button class="btn full sec mt" id="pw-ok">Cambiar contraseña</button>
+    <p class="mut mb0 mt"><small>Al cambiarla se cierra la sesión en tus otros dispositivos.</small></p></div>
   <div class="card"><h2>Instalar en el celular</h2>
-    <p class="mut">En Chrome: menú ⋮ → <b>Agregar a la pantalla principal</b>. En iPhone (Safari): compartir → <b>Agregar a inicio</b>. Queda como una app más.</p></div>
+    <p class="mut mb0">En Chrome: menú ⋮ → <b>Agregar a la pantalla principal</b>. En iPhone (Safari): compartir → <b>Agregar a inicio</b>. Queda como una app más.</p></div>
+  <div class="card"><h2>Mis datos y privacidad</h2>
+    <p class="mut">Tus datos son tuyos. Puedes llevártelos o borrarlos cuando quieras.</p>
+    <button class="btn full sec" id="exportar">⬇️ Descargar mis datos</button>
+    <button class="btn full borde mt" onclick="verLegal('privacidad')">Política de privacidad</button>
+    <button class="btn full borde mt" onclick="verLegal('terminos')">Términos y condiciones</button>
+    ${S.config.soporte ? `<a class="btn full borde mt" href="mailto:${esc(S.config.soporte)}" style="text-decoration:none">✉️ Escribir a soporte</a>` : ''}
+  </div>
   <button class="btn full borde" onclick="salir()">Cerrar sesión</button>
+  <button class="btn full borde mt" id="borrar" style="color:var(--rojo);border-color:#f0c9c0">Borrar mi cuenta</button>
   <p class="centro mut mt"><small>Vamos Pa' Arriba · I8A Project · ${esc(S.usuario.email)}</small></p>`;
+
   $('#perf-ok').onclick = async () => {
     const v = leerCampos(CAMPOS_PERFIL, document);
+    const nom = $('#aj-nombre').value.trim();
+    if (nom && nom !== S.usuario.nombre) v.nombre_cuenta = nom;
     await guardarPerfil(v); toast('Guardado ✓');
   };
-  $('#pw-ok').onclick = async () => {
-    try { await api('PATCH', '/api/password', { actual: $('#pw-a').value, nueva: $('#pw-n').value }); toast('Contraseña cambiada ✓'); $('#pw-a').value = $('#pw-n').value = ''; }
-    catch (e) { toast(e.message); }
+  $('#aj-oracion').onclick = async (e) => {
+    e.currentTarget.classList.toggle('ok');
+    await guardarPerfil({ oracion: e.currentTarget.classList.contains('ok') }); toast('Guardado ✓');
   };
+  $('#pw-ok').onclick = async () => {
+    try {
+      const r = await api('PATCH', '/api/password', { actual: $('#pw-a').value, nueva: $('#pw-n').value });
+      if (r.token) { S.token = r.token; localStorage.setItem('vpa_token', r.token); }
+      toast('Contraseña cambiada ✓'); $('#pw-a').value = $('#pw-n').value = '';
+    } catch (e) { toast(e.message); }
+  };
+  $('#exportar').onclick = async () => {
+    try {
+      const r = await fetch('/api/exportar', { headers: { Authorization: 'Bearer ' + S.token } });
+      if (!r.ok) throw new Error('No se pudo descargar');
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement('a'); a.href = url; a.download = `mis-datos-vamos-pa-arriba-${hoyStr()}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) { toast(e.message); }
+  };
+  $('#borrar').onclick = () => modal(`<h2>Borrar mi cuenta</h2>
+    <p>Se borran <b>para siempre</b> tu cuenta y todo lo que cargaste: hábitos, comidas, ejercicio, estudios, notas. No se puede deshacer.</p>
+    <p class="mut">Si quieres guardar una copia, primero toca "Descargar mis datos".</p>
+    <label class="f">Escribe tu contraseña para confirmar</label><input class="i" type="password" id="del-pw">
+    <button class="btn full rojo mt" data-ok>Borrar todo</button><button class="btn full borde mt" data-x>Cancelar</button>`, (o) => {
+    $('[data-x]', o).onclick = () => o.remove();
+    $('[data-ok]', o).onclick = async () => {
+      try { await api('DELETE', '/api/cuenta', { password: $('#del-pw', o).value }); o.remove(); salir(); toast('Tu cuenta fue borrada. ¡Gracias por haberla usado! 🌱'); }
+      catch (e) { toast(e.message); }
+    };
+  });
+  if (S.usuario.admin) {
+    try {
+      const e = await api('GET', '/api/admin/estadisticas');
+      $('#admin').innerHTML = `<h2>📊 Panel del dueño</h2>
+        <div class="grid2" style="margin-top:8px">
+          ${[['Usuarios', e.usuarios], ['Familias', e.familias], ['Activos 7 días', e.activos7], ['Activos 30 días', e.activos30], ['Nuevos 7 días', e.nuevos7], ['Nuevos 30 días', e.nuevos30]]
+            .map(([t, n]) => `<div><div class="big">${n}</div><small style="color:#fff;opacity:.85">${t}</small></div>`).join('')}
+        </div><p class="mb0 mt"><small style="color:#fff;opacity:.85">${e.registros30} registros cargados en los últimos 30 días. Solo ves totales, nunca los datos de nadie.</small></p>`;
+    } catch (err) { $('#admin').innerHTML = `<p class="mb0">No se pudieron cargar las estadísticas.</p>`; }
+  }
 }
 
 /* =========================================================
    INICIO
    ========================================================= */
 async function iniciar() {
+  try { S.config = await api('GET', '/api/config'); } catch (e) { S.config = {}; }
+  const m = location.hash.match(/^#reset=([a-f0-9]{64})$/);
+  if (m) { S.resetToken = m[1]; return vistaLogin('reset'); }
   if (!S.token) return vistaLogin();
   try {
     if (!S.usuario) S.usuario = await api('GET', '/api/yo');
   } catch (e) { return; }
+  if (!S.usuario.acepto && !(await pedirConsentimiento())) return;
+  let destino = 'hoy';
+  if (!perfil().bienvenida) destino = await bienvenida();
   $('#nav').classList.remove('oculto');
-  ir('hoy');
+  ir(destino);
 }
+window.addEventListener('hashchange', () => { if (/^#reset=/.test(location.hash)) { S.usuario = null; iniciar(); } });
 iniciar();
 </script>
 </body>
