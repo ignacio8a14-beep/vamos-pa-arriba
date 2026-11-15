@@ -22,6 +22,12 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS familia_id INT REFERENCES familias
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_ver INT NOT NULL DEFAULT 0;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS acepto_terminos TIMESTAMPTZ;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ultimo_acceso TIMESTAMPTZ;
+-- Administración de cuentas
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS suspendido BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'gratis';
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plan_vence DATE;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ia_limite INT;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nota_admin TEXT;
 
 -- Links de "olvidé mi contraseña" (se guarda solo el hash del token)
 CREATE TABLE IF NOT EXISTS reseteos (

@@ -200,6 +200,7 @@ async function api(metodo, url, cuerpo) {
   let data = null;
   try { data = await r.json(); } catch (e) {}
   if (r.status === 401 && S.token) { salir(); throw new Error('Sesión vencida'); }
+  if (r.status === 403 && data && data.suspendida) { salir(); toast(data.error); throw new Error(data.error); }
   if (!r.ok) throw new Error((data && data.error) || 'Error de conexión');
   return data;
 }
@@ -606,6 +607,8 @@ function textoLegal(cual) {
     <p>Si activas "Completar con IA", cada vez que tocas <b>✨ Leer</b> el archivo elegido se envía a OpenAI, un proveedor externo, únicamente para transcribir los valores del estudio. Solo se envía ese archivo y solo cuando lo pides. Puedes desactivarlo en ⚙️ Ajustes; sin tu aceptación no se envía nada.</p>
     <h3>Familia</h3>
     <p>Si te unes a una familia, los demás integrantes ven tu nombre y los alimentos que marcaste que no comes. <b>No ven</b> tus datos de salud, hábitos ni notas.</p>
+    <h3>¿Qué ve el administrador?</h3>
+    <p>Para dar soporte, el administrador de la app ve los datos de tu cuenta: nombre, email, fechas de alta y de último acceso, familia y plan. Desde el panel de administración <b>no puede ver</b> tus datos de salud, notas ni archivos.</p>
     <h3>¿Dónde se guardan y cómo se protegen?</h3>
     <p>En servidores contratados por I8A Project. La conexión viaja cifrada (HTTPS), las contraseñas se guardan cifradas y el acceso al servidor está restringido.</p>
     <h3>Tus derechos</h3>
@@ -746,7 +749,7 @@ document.querySelectorAll('#nav button').forEach((b) => (b.onclick = () => ir(b.
 
 async function render() {
   actualizarMomentos();
-  const f = { hoy: vistaHoy, comida: vistaComida, mover: vistaMover, calma: vistaCalma, salud: vistaSalud, ajustes: vistaAjustes }[S.vista];
+  const f = { hoy: vistaHoy, comida: vistaComida, mover: vistaMover, calma: vistaCalma, salud: vistaSalud, ajustes: vistaAjustes, admin: vistaAdmin }[S.vista];
   try { await f(); } catch (e) { console.error(e); $('#app').innerHTML = `<div class="card">No se pudo cargar: ${esc(e.message)}</div>`; }
 }
 function encabezado(titulo, sub) {
@@ -2111,7 +2114,7 @@ async function vistaAjustes() {
   const p = { ...perfil() };
   const oracionOn = p.oracion !== false;
   $('#app').innerHTML = `<div class="top"><button class="btn chico borde" onclick="ir('hoy')">← Volver</button><h1 class="mb0">Ajustes</h1><span></span></div>
-  ${S.usuario.admin ? `<div class="card verde" id="admin"><h2>📊 Panel del dueño</h2><p class="mb0">Cargando…</p></div>` : ''}
+  ${S.usuario.admin ? `<div class="card verde"><h2>🛠️ Administración</h2><p>Cuentas, planes, suspensiones y estadísticas.</p><button class="btn full" onclick="ir('admin')">Abrir panel de administración</button></div>` : ''}
   <div class="card"><h2>Mi perfil</h2>
     <label class="f">Nombre</label><input class="i" id="aj-nombre" value="${esc(S.usuario.nombre)}">
     ${htmlCampos(CAMPOS_PERFIL, p)}<button class="btn full mt" id="perf-ok">Guardar</button></div>
@@ -2179,16 +2182,132 @@ async function vistaAjustes() {
       catch (e) { toast(e.message); }
     };
   });
-  if (S.usuario.admin) {
-    try {
-      const e = await api('GET', '/api/admin/estadisticas');
-      $('#admin').innerHTML = `<h2>📊 Panel del dueño</h2>
-        <div class="grid2" style="margin-top:8px">
-          ${[['Usuarios', e.usuarios], ['Familias', e.familias], ['Activos 7 días', e.activos7], ['Activos 30 días', e.activos30], ['Nuevos 7 días', e.nuevos7], ['Nuevos 30 días', e.nuevos30]]
-            .map(([t, n]) => `<div><div class="big">${n}</div><small style="color:#fff;opacity:.85">${t}</small></div>`).join('')}
-        </div><p class="mb0 mt"><small style="color:#fff;opacity:.85">${e.registros30} registros y ${e.ia30} lecturas con IA en los últimos 30 días. Solo ves totales, nunca los datos de nadie.</small></p>`;
-    } catch (err) { $('#admin').innerHTML = `<p class="mb0">No se pudieron cargar las estadísticas.</p>`; }
-  }
+}
+
+/* =========================================================
+   PANEL DE ADMINISTRACIÓN (solo el dueño)
+   Muestra datos de las cuentas, nunca datos de salud.
+   ========================================================= */
+const PLANES = { gratis: 'Gratis', pro: 'Pro', cortesia: 'Cortesía' };
+function haceCuanto(iso) {
+  if (!iso) return 'nunca';
+  const min = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (min < 60) return 'hace un rato';
+  const h = Math.round(min / 60); if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24); if (d < 30) return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
+  const m = Math.round(d / 30); return `hace ${m} ${m === 1 ? 'mes' : 'meses'}`;
+}
+const fechaIso = (iso) => (iso ? fechaCorta(String(iso).slice(0, 10)) : '—');
+
+async function vistaAdmin() {
+  if (!S.usuario.admin) return ir('hoy');
+  S.adm = S.adm || { q: '', filtro: 'todos' };
+  const [e, usuarios] = await Promise.all([api('GET', '/api/admin/estadisticas'), api('GET', '/api/admin/usuarios?q=' + encodeURIComponent(S.adm.q))]);
+  const hace7 = Date.now() - 7 * 86400000;
+  const filtros = {
+    todos: () => true,
+    activos: (u) => u.ultimo_acceso && new Date(u.ultimo_acceso) > hace7,
+    inactivos: (u) => !u.ultimo_acceso || new Date(u.ultimo_acceso) < Date.now() - 30 * 86400000,
+    pago: (u) => u.plan !== 'gratis',
+    suspendidos: (u) => u.suspendido,
+  };
+  const lista = usuarios.filter(filtros[S.adm.filtro]);
+  $('#app').innerHTML = `<div class="top"><button class="btn chico borde" onclick="ir('ajustes')">← Volver</button><h1 class="mb0">Administración</h1><span></span></div>
+  <div class="card verde">
+    <div class="grid2">${[['Usuarios', e.usuarios], ['Activos 7 días', e.activos7], ['Nuevos 30 días', e.nuevos30], ['Familias', e.familias], ['Plan pago / cortesía', e.pro], ['Suspendidos', e.suspendidos]]
+      .map(([t, n]) => `<div><div class="big">${n}</div><small style="color:#fff;opacity:.85">${t}</small></div>`).join('')}</div>
+    <p class="mb0 mt"><small style="color:#fff;opacity:.85">${e.ia30} lecturas con IA en los últimos 30 días.</small></p>
+  </div>
+  <input class="i" id="adm-q" placeholder="🔎 Buscar por nombre o email" value="${esc(S.adm.q)}" style="margin-bottom:8px">
+  <div class="tabs">${[['todos', 'Todos'], ['activos', 'Activos'], ['inactivos', 'Inactivos +30 días'], ['pago', 'Pro / cortesía'], ['suspendidos', 'Suspendidos']]
+    .map(([k, t]) => `<span class="chip ${S.adm.filtro === k ? 'on' : ''}" data-f="${k}">${t}</span>`).join('')}</div>
+  <div class="card">
+    <div class="fila entre"><small class="mut">${lista.length} ${lista.length === 1 ? 'cuenta' : 'cuentas'}</small><button class="btn chico borde" id="adm-csv">⬇️ Exportar CSV</button></div>
+    ${lista.map((u) => `<div class="lista-item" data-u="${u.id}" style="cursor:pointer">
+      <div class="fila entre"><b>${esc(u.nombre)}</b><span>${u.admin ? '<span class="badge">Admin</span> ' : ''}${u.plan !== 'gratis' ? `<span class="badge medio">${PLANES[u.plan]}</span> ` : ''}${u.suspendido ? '<span class="badge alto">Suspendida</span>' : ''}</span></div>
+      <small class="mut">${esc(u.email)}</small><br>
+      <small>Alta ${fechaIso(u.creado)} · último acceso ${haceCuanto(u.ultimo_acceso)}${u.familia ? ' · 👨‍👩‍👧 ' + esc(u.familia) : ''}</small>
+    </div>`).join('') || '<p class="mut">No hay cuentas con ese filtro.</p>'}
+  </div>
+  <div class="nota">Desde acá administras las cuentas. Por privacidad no se pueden ver datos de salud, notas ni archivos de nadie.</div>`;
+
+  let t; $('#adm-q').oninput = (ev) => { clearTimeout(t); t = setTimeout(() => { S.adm.q = ev.target.value; vistaAdmin().then(() => { const i = $('#adm-q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }); }, 350); };
+  document.querySelectorAll('[data-f]').forEach((c) => (c.onclick = () => { S.adm.filtro = c.dataset.f; vistaAdmin(); }));
+  $('#adm-csv').onclick = async () => {
+    const r = await fetch('/api/admin/usuarios.csv', { headers: { Authorization: 'Bearer ' + S.token } });
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a'); a.href = url; a.download = `usuarios-vamos-pa-arriba-${hoyStr()}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  };
+  document.querySelectorAll('[data-u]').forEach((el) => (el.onclick = () => fichaUsuario(usuarios.find((u) => u.id == el.dataset.u))));
+}
+
+function fichaUsuario(u) {
+  const accion = async (fn, okMsg) => { try { const r = await fn(); if (okMsg) toast(okMsg); return r; } catch (err) { toast(err.message); return null; } };
+  modal(`<div class="fila entre"><h2 class="mb0">${esc(u.nombre)}</h2><button class="btn chico borde" data-x>✕</button></div>
+    <p class="mut mb0">${esc(u.email)}</p>
+    <table class="val mt">
+      <tr><td>Alta</td><td>${fechaIso(u.creado)}</td></tr>
+      <tr><td>Último acceso</td><td>${haceCuanto(u.ultimo_acceso)}</td></tr>
+      <tr><td>Familia</td><td>${u.familia ? esc(u.familia) : '—'}</td></tr>
+      <tr><td>Aceptó privacidad</td><td>${u.acepto ? 'Sí' : 'Todavía no'}</td></tr>
+      <tr><td>Lecturas IA este mes</td><td>${u.ia_mes} de ${u.ia_limite_efectivo}</td></tr>
+      <tr><td>Estado</td><td>${u.suspendido ? '<span class="badge alto">Suspendida</span>' : '<span class="badge">Activa</span>'}</td></tr>
+    </table>
+    <h3 class="mt">Plan</h3>
+    <div class="grid2">
+      <div><label class="f">Plan</label><select class="i" id="u-plan">${Object.entries(PLANES).map(([k, n]) => `<option value="${k}" ${u.plan === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      <div><label class="f">Vence</label><input class="i" type="date" id="u-vence" value="${u.plan_vence ? String(u.plan_vence).slice(0, 10) : ''}"></div>
+    </div>
+    <label class="f">Lecturas con IA por mes (vacío = ${S.config.iaLimite ?? 10}, 0 = desactivada)</label>
+    <input class="i" type="number" id="u-ia" value="${u.ia_limite ?? ''}" inputmode="numeric">
+    <label class="f">Nota interna (solo la ves tú)</label>
+    <textarea class="i" id="u-nota" placeholder="Ej.: pagó por transferencia el 15/11; cliente de Ricardo">${esc(u.nota_admin || '')}</textarea>
+    <button class="btn full mt" data-guardar>Guardar cambios</button>
+    ${u.admin ? '<p class="mut mt"><small>Esta es tu cuenta de administrador: no se puede suspender ni borrar desde acá.</small></p>' : `
+    <h3 class="mt">Acceso</h3>
+    <button class="btn full sec" data-reset>✉️ Enviarle link para nueva contraseña</button>
+    <button class="btn full sec mt" data-temp>🔑 Generar contraseña temporal</button>
+    <button class="btn full borde mt" data-sesiones>Cerrar todas sus sesiones</button>
+    <button class="btn full mt ${u.suspendido ? '' : 'ambar'}" data-susp>${u.suspendido ? '✅ Reactivar cuenta' : '⏸️ Suspender cuenta'}</button>
+    <button class="btn full borde mt" data-borrar style="color:var(--rojo);border-color:#f0c9c0">Borrar cuenta y todos sus datos</button>`}`, (o) => {
+    $('[data-x]', o).onclick = () => o.remove();
+    $('[data-guardar]', o).onclick = async () => {
+      const r = await accion(() => api('PATCH', '/api/admin/usuarios/' + u.id, {
+        plan: $('#u-plan', o).value, plan_vence: $('#u-vence', o).value || null,
+        ia_limite: $('#u-ia', o).value === '' ? null : Number($('#u-ia', o).value), nota_admin: $('#u-nota', o).value,
+      }), 'Guardado ✓');
+      if (r) { o.remove(); vistaAdmin(); }
+    };
+    if (u.admin) return;
+    $('[data-reset]', o).onclick = () => accion(() => api('POST', `/api/admin/usuarios/${u.id}/enviar-reset`), `Link enviado a ${u.email} (vence en 24 h)`);
+    $('[data-temp]', o).onclick = async () => {
+      if (!confirm(`Se va a cambiar la contraseña de ${u.nombre} y se cerrarán sus sesiones. ¿Seguir?`)) return;
+      const r = await accion(() => api('POST', `/api/admin/usuarios/${u.id}/clave-temporal`));
+      if (r) modal(`<h2>🔑 Contraseña temporal</h2><p>Pásasela a <b>${esc(u.nombre)}</b> por un medio seguro. No se vuelve a mostrar.</p>
+        <div class="card centro" style="font-size:1.5rem;font-weight:800;letter-spacing:.08em;user-select:all">${esc(r.clave)}</div>
+        <p class="mut">Recomiéndale cambiarla en ⚙️ Ajustes → Contraseña apenas entre.</p>
+        <button class="btn full" data-copiar>Copiar</button><button class="btn full borde mt" data-x>Cerrar</button>`, (o2) => {
+        $('[data-x]', o2).onclick = () => o2.remove();
+        $('[data-copiar]', o2).onclick = () => compartir(`Tu contraseña temporal de Vamos Pa' Arriba es: ${r.clave}\nEntra en ${location.origin} y cámbiala en Ajustes.`);
+      });
+    };
+    $('[data-sesiones]', o).onclick = () => accion(() => api('POST', `/api/admin/usuarios/${u.id}/cerrar-sesiones`), 'Sesiones cerradas ✓');
+    $('[data-susp]', o).onclick = async () => {
+      if (!u.suspendido && !confirm(`¿Suspender a ${u.nombre}? No va a poder entrar hasta que la reactives. Sus datos se conservan.`)) return;
+      const r = await accion(() => api('PATCH', '/api/admin/usuarios/' + u.id, { suspendido: !u.suspendido }), u.suspendido ? 'Cuenta reactivada ✓' : 'Cuenta suspendida');
+      if (r) { o.remove(); vistaAdmin(); }
+    };
+    $('[data-borrar]', o).onclick = () => modal(`<h2>Borrar la cuenta de ${esc(u.nombre)}</h2>
+      <p>Se borran <b>para siempre</b> la cuenta y todo lo que cargó. No se puede deshacer.</p>
+      <label class="f">Para confirmar, escribe su email: <b>${esc(u.email)}</b></label><input class="i" id="del-conf" autocomplete="off">
+      <button class="btn full rojo mt" data-ok>Borrar definitivamente</button><button class="btn full borde mt" data-x>Cancelar</button>`, (o2) => {
+      $('[data-x]', o2).onclick = () => o2.remove();
+      $('[data-ok]', o2).onclick = async () => {
+        const r = await accion(() => api('DELETE', '/api/admin/usuarios/' + u.id, { confirmar: $('#del-conf', o2).value }), 'Cuenta borrada');
+        if (r) { o2.remove(); o.remove(); vistaAdmin(); }
+      };
+    });
+  });
 }
 
 /* =========================================================
@@ -2205,6 +2324,7 @@ async function iniciar() {
   if (!S.usuario.acepto && !(await pedirConsentimiento())) return;
   let destino = 'hoy';
   if (!perfil().bienvenida) destino = await bienvenida();
+  if (location.pathname === '/admin' && S.usuario.admin) destino = 'admin';
   $('#nav').classList.remove('oculto');
   ir(destino);
 }

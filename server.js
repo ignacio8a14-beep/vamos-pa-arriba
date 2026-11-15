@@ -66,6 +66,7 @@ const usuarioPublico = (u) => ({
   id: u.id, nombre: u.nombre, email: u.email, perfil: u.perfil || {},
   admin: !!ADMIN_EMAIL && u.email === ADMIN_EMAIL,
   acepto: !!u.acepto_terminos,
+  plan: u.plan || 'gratis',
 });
 const emailValido = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
@@ -76,12 +77,20 @@ async function auth(req, res, next) {
   let datos;
   try { datos = jwt.verify(token, JWT_SECRET); } catch { return res.status(401).json({ error: 'Sesión vencida' }); }
   try {
-    const r = await pool.query('SELECT token_ver, email FROM usuarios WHERE id=$1', [datos.id]);
+    const r = await pool.query('SELECT token_ver, email, suspendido FROM usuarios WHERE id=$1', [datos.id]);
     if (!r.rowCount || (r.rows[0].token_ver || 0) !== (datos.v || 0)) return res.status(401).json({ error: 'Sesión vencida' });
+    if (r.rows[0].suspendido) return res.status(403).json({ error: MSJ_SUSPENDIDA, suspendida: true });
     req.uid = datos.id; req.email = r.rows[0].email;
     pool.query('UPDATE usuarios SET ultimo_acceso = now() WHERE id=$1 AND (ultimo_acceso IS NULL OR ultimo_acceso < now() - interval \'1 hour\')', [datos.id]).catch(() => {});
     next();
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+}
+
+const MSJ_SUSPENDIDA = 'Tu cuenta está suspendida. Escribe a soporte para más información.';
+const esAdmin = (req) => !!ADMIN_EMAIL && req.email === ADMIN_EMAIL;
+function soloAdmin(req, res, next) {
+  if (!esAdmin(req)) return res.status(403).json({ error: 'Solo para el administrador' });
+  next();
 }
 
 // Límite simple de intentos por IP (login, registro, recuperar)
@@ -152,6 +161,7 @@ app.post('/api/login', limite(15, 15), wrap(async (req, res) => {
   const u = r.rows[0];
   if (!u || !(await bcrypt.compare(String(password || ''), u.password_hash)))
     return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+  if (u.suspendido) return res.status(403).json({ error: MSJ_SUSPENDIDA });
   res.json({ token: firmar(u), usuario: usuarioPublico(u) });
 }));
 
@@ -196,22 +206,26 @@ app.post('/api/recuperar', limite(5, 30), wrap(async (req, res) => {
   const mail = String((req.body && req.body.email) || '').trim().toLowerCase();
   const respuesta = { ok: true, mensaje: 'Si ese email tiene cuenta, te enviamos un link para crear una contraseña nueva. Revisa también el spam.' };
   if (!RESEND_API_KEY) return res.status(503).json({ error: 'La recuperación por email no está configurada. Escribe a soporte.' });
-  const r = await pool.query('SELECT id, nombre FROM usuarios WHERE email=$1', [mail]);
+  const r = await pool.query('SELECT id, nombre, email FROM usuarios WHERE email=$1', [mail]);
   if (!r.rowCount) return res.json(respuesta);
-  const token = crypto.randomBytes(32).toString('hex');
-  await pool.query('DELETE FROM reseteos WHERE usuario_id=$1', [r.rows[0].id]);
-  await pool.query("INSERT INTO reseteos (usuario_id, token_hash, expira) VALUES ($1,$2, now() + interval '1 hour')", [r.rows[0].id, hashToken(token)]);
-  const base = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
-  const link = `${base}/#reset=${token}`;
-  await enviarMail(mail, "Crea tu nueva contraseña · Vamos Pa' Arriba", `
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#1e2a27">
-      <h2 style="color:#1f6f5c">Hola, ${String(r.rows[0].nombre).replace(/[<>&]/g, '')} 🌱</h2>
-      <p>Recibimos un pedido para cambiar la contraseña de tu cuenta de Vamos Pa' Arriba.</p>
-      <p><a href="${link}" style="display:inline-block;background:#1f6f5c;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">Crear contraseña nueva</a></p>
-      <p style="color:#6b7774;font-size:13px">El link vence en 1 hora. Si no lo pediste, ignora este mensaje: tu contraseña sigue igual.</p>
-    </div>`);
+  await enviarReset(r.rows[0], req, 1);
   res.json(respuesta);
 }));
+
+async function enviarReset(u, req, horas) {
+  const token = crypto.randomBytes(32).toString('hex');
+  await pool.query('DELETE FROM reseteos WHERE usuario_id=$1', [u.id]);
+  await pool.query(`INSERT INTO reseteos (usuario_id, token_hash, expira) VALUES ($1,$2, now() + interval '${Number(horas)} hours')`, [u.id, hashToken(token)]);
+  const base = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  const link = `${base}/#reset=${token}`;
+  return enviarMail(u.email, "Crea tu nueva contraseña · Vamos Pa' Arriba", `
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#1e2a27">
+      <h2 style="color:#1f6f5c">Hola, ${String(u.nombre).replace(/[<>&]/g, '')} 🌱</h2>
+      <p>Recibimos un pedido para cambiar la contraseña de tu cuenta de Vamos Pa' Arriba.</p>
+      <p><a href="${link}" style="display:inline-block;background:#1f6f5c;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">Crear contraseña nueva</a></p>
+      <p style="color:#6b7774;font-size:13px">El link vence en ${horas === 1 ? '1 hora' : horas + ' horas'}. Si no lo pediste, ignora este mensaje: tu contraseña sigue igual.</p>
+    </div>`);
+}
 
 app.post('/api/restablecer', limite(10, 30), wrap(async (req, res) => {
   const { token, password } = req.body || {};
@@ -247,8 +261,7 @@ app.delete('/api/cuenta', auth, wrap(async (req, res) => {
 }));
 
 // ---------- panel del dueño ----------
-app.get('/api/admin/estadisticas', auth, wrap(async (req, res) => {
-  if (!ADMIN_EMAIL || req.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Solo para el administrador' });
+app.get('/api/admin/estadisticas', auth, soloAdmin, wrap(async (req, res) => {
   const q = async (sql) => Number((await pool.query(sql)).rows[0].n);
   res.json({
     usuarios: await q('SELECT count(*) n FROM usuarios'),
@@ -259,6 +272,8 @@ app.get('/api/admin/estadisticas', auth, wrap(async (req, res) => {
     familias: await q('SELECT count(*) n FROM familias'),
     registros30: await q("SELECT count(*) n FROM registros WHERE creado > now() - interval '30 days'"),
     ia30: await q("SELECT count(*) n FROM ia_usos WHERE creado > now() - interval '30 days'"),
+    suspendidos: await q('SELECT count(*) n FROM usuarios WHERE suspendido'),
+    pro: await q("SELECT count(*) n FROM usuarios WHERE plan <> 'gratis'"),
   });
 }));
 
@@ -376,6 +391,86 @@ app.put('/api/registros/:id', auth, wrap(async (req, res) => {
 
 app.delete('/api/registros/:id', auth, wrap(async (req, res) => {
   await pool.query('DELETE FROM registros WHERE id=$1 AND usuario_id=$2', [req.params.id, req.uid]);
+  res.json({ ok: true });
+}));
+
+// ---------- administración de cuentas ----------
+// El administrador ve solo datos de la cuenta (nunca datos de salud, notas ni archivos)
+const SQL_USUARIOS_ADMIN = `
+  SELECT u.id, u.nombre, u.email, u.creado, u.ultimo_acceso, u.suspendido, u.plan, u.plan_vence, u.ia_limite, u.nota_admin,
+         u.acepto_terminos IS NOT NULL AS acepto, f.nombre AS familia,
+         (SELECT count(*)::int FROM ia_usos i WHERE i.usuario_id = u.id AND i.ok AND i.creado > date_trunc('month', now())) AS ia_mes
+  FROM usuarios u LEFT JOIN familias f ON f.id = u.familia_id`;
+
+app.get('/api/admin/usuarios', auth, soloAdmin, wrap(async (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const r = await pool.query(`${SQL_USUARIOS_ADMIN}
+    WHERE ($1 = '' OR lower(u.nombre) LIKE '%' || $1 || '%' OR lower(u.email) LIKE '%' || $1 || '%')
+    ORDER BY u.creado DESC LIMIT 500`, [q]);
+  res.json(r.rows.map((u) => ({ ...u, admin: u.email === ADMIN_EMAIL, ia_limite_efectivo: u.ia_limite ?? IA_LIMITE_MES })));
+}));
+
+app.get('/api/admin/usuarios.csv', auth, soloAdmin, wrap(async (req, res) => {
+  const r = await pool.query(`${SQL_USUARIOS_ADMIN} ORDER BY u.creado`);
+  const c = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const f = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+  const filas = [['Nombre', 'Email', 'Alta', 'Último acceso', 'Plan', 'Vence', 'Estado', 'Familia', 'Lecturas IA este mes'].map(c).join(',')]
+    .concat(r.rows.map((u) => [u.nombre, u.email, f(u.creado), f(u.ultimo_acceso), u.plan, f(u.plan_vence), u.suspendido ? 'Suspendida' : 'Activa', u.familia, u.ia_mes].map(c).join(',')));
+  res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="usuarios-vamos-pa-arriba.csv"' });
+  res.send('\uFEFF' + filas.join('\n'));
+}));
+
+async function usuarioObjetivo(req, res) {
+  const r = await pool.query('SELECT id, nombre, email, familia_id FROM usuarios WHERE id=$1', [req.params.id]);
+  if (!r.rowCount) { res.status(404).json({ error: 'Usuario no encontrado' }); return null; }
+  if (r.rows[0].email === ADMIN_EMAIL && req.method !== 'PATCH') { res.status(400).json({ error: 'No puedes hacer eso con tu propia cuenta de administrador' }); return null; }
+  return r.rows[0];
+}
+
+app.patch('/api/admin/usuarios/:id', auth, soloAdmin, wrap(async (req, res) => {
+  const u = await usuarioObjetivo(req, res); if (!u) return;
+  const b = req.body || {};
+  if ('suspendido' in b && u.email === ADMIN_EMAIL) return res.status(400).json({ error: 'No puedes suspender tu propia cuenta' });
+  const sets = [], vals = [u.id];
+  const poner = (col, v) => { vals.push(v); sets.push(`${col} = $${vals.length}`); };
+  if ('suspendido' in b) { poner('suspendido', !!b.suspendido); if (b.suspendido) sets.push('token_ver = token_ver + 1'); }
+  if ('plan' in b) { if (!['gratis', 'pro', 'cortesia'].includes(b.plan)) return res.status(400).json({ error: 'Plan inválido' }); poner('plan', b.plan); }
+  if ('plan_vence' in b) { if (b.plan_vence && !FECHA_RE.test(b.plan_vence)) return res.status(400).json({ error: 'Fecha inválida' }); poner('plan_vence', b.plan_vence || null); }
+  if ('ia_limite' in b) { const n = b.ia_limite === null || b.ia_limite === '' ? null : parseInt(b.ia_limite, 10); if (n !== null && (isNaN(n) || n < 0 || n > 1000)) return res.status(400).json({ error: 'Límite inválido' }); poner('ia_limite', n); }
+  if ('nota_admin' in b) poner('nota_admin', String(b.nota_admin || '').slice(0, 1000));
+  if (!sets.length) return res.status(400).json({ error: 'Nada para cambiar' });
+  await pool.query(`UPDATE usuarios SET ${sets.join(', ')} WHERE id = $1`, vals);
+  const r = await pool.query(`${SQL_USUARIOS_ADMIN} WHERE u.id = $1`, [u.id]);
+  res.json({ ...r.rows[0], admin: r.rows[0].email === ADMIN_EMAIL, ia_limite_efectivo: r.rows[0].ia_limite ?? IA_LIMITE_MES });
+}));
+
+// Contraseña temporal: se muestra una sola vez al administrador para que se la pase al usuario
+app.post('/api/admin/usuarios/:id/clave-temporal', auth, soloAdmin, wrap(async (req, res) => {
+  const u = await usuarioObjetivo(req, res); if (!u) return;
+  const clave = Array.from(crypto.randomBytes(10), (x) => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join('');
+  await pool.query('UPDATE usuarios SET password_hash=$2, token_ver = token_ver + 1 WHERE id=$1', [u.id, await bcrypt.hash(clave, 10)]);
+  res.json({ clave });
+}));
+
+app.post('/api/admin/usuarios/:id/enviar-reset', auth, soloAdmin, wrap(async (req, res) => {
+  const u = await usuarioObjetivo(req, res); if (!u) return;
+  if (!RESEND_API_KEY) return res.status(503).json({ error: 'El envío de emails no está configurado (falta RESEND_API_KEY). Usa la contraseña temporal.' });
+  const ok = await enviarReset(u, req, 24);
+  if (!ok) return res.status(502).json({ error: 'No se pudo enviar el email. Revisa la configuración de Resend.' });
+  res.json({ ok: true });
+}));
+
+app.post('/api/admin/usuarios/:id/cerrar-sesiones', auth, soloAdmin, wrap(async (req, res) => {
+  const u = await usuarioObjetivo(req, res); if (!u) return;
+  await pool.query('UPDATE usuarios SET token_ver = token_ver + 1 WHERE id=$1', [u.id]);
+  res.json({ ok: true });
+}));
+
+app.delete('/api/admin/usuarios/:id', auth, soloAdmin, wrap(async (req, res) => {
+  const u = await usuarioObjetivo(req, res); if (!u) return;
+  if (String((req.body && req.body.confirmar) || '').trim().toLowerCase() !== u.email) return res.status(400).json({ error: 'Para confirmar, escribe el email exacto de la cuenta' });
+  await pool.query('DELETE FROM usuarios WHERE id=$1', [u.id]);
+  if (u.familia_id) await pool.query('DELETE FROM familias f WHERE id=$1 AND NOT EXISTS (SELECT 1 FROM usuarios WHERE familia_id=f.id)', [u.familia_id]);
   res.json({ ok: true });
 }));
 
@@ -509,10 +604,11 @@ Reglas:
 
 app.post('/api/ia/leer', auth, wrap(async (req, res) => {
   if (!OPENAI_API_KEY) return res.status(503).json({ error: 'La lectura con IA no está activada' });
-  const u = await pool.query("SELECT perfil->>'consentIA' AS c FROM usuarios WHERE id=$1", [req.uid]);
+  const u = await pool.query("SELECT perfil->>'consentIA' AS c, ia_limite FROM usuarios WHERE id=$1", [req.uid]);
   if (u.rows[0].c !== 'true') return res.status(403).json({ error: 'Primero tienes que aceptar el uso de la IA' });
+  const limiteIA = u.rows[0].ia_limite ?? IA_LIMITE_MES;
   const usos = await pool.query("SELECT count(*)::int n FROM ia_usos WHERE usuario_id=$1 AND ok AND creado > date_trunc('month', now())", [req.uid]);
-  if (usos.rows[0].n >= IA_LIMITE_MES) return res.status(429).json({ error: `Llegaste al límite de ${IA_LIMITE_MES} lecturas con IA de este mes` });
+  if (usos.rows[0].n >= limiteIA) return res.status(429).json({ error: limiteIA ? `Llegaste al límite de ${limiteIA} lecturas con IA de este mes` : 'La lectura con IA no está habilitada en tu cuenta' });
 
   // El archivo puede venir de un adjunto ya guardado o directo (registro nuevo todavía sin guardar)
   let tipo, nombre, base64;
@@ -571,7 +667,7 @@ app.post('/api/ia/leer', auth, wrap(async (req, res) => {
     fecha: FECHA_RE.test(datos.fecha || '') ? datos.fecha : null,
     lugar: datos.lugar ? String(datos.lugar).slice(0, 80) : null,
     notas: datos.notas ? String(datos.notas).slice(0, 400) : null,
-    restantes: IA_LIMITE_MES - usos.rows[0].n - 1,
+    restantes: limiteIA - usos.rows[0].n - 1,
   });
 }));
 
