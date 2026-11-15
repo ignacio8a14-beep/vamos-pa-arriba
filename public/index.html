@@ -593,7 +593,7 @@ function salir() {
 function textoLegal(cual) {
   const contacto = S.config.soporte ? `<a href="mailto:${esc(S.config.soporte)}">${esc(S.config.soporte)}</a>` : 'el email de soporte informado en la app';
   if (cual === 'privacidad') return `
-    <h2>Política de privacidad</h2><p class="mut">Versión 2 · noviembre de 2026</p>
+    <h2>Política de privacidad</h2><p class="mut">Versión 3 · noviembre de 2026</p>
     <h3>¿Quién es responsable de tus datos?</h3>
     <p>I8A Project, con domicilio en Junín, provincia de Buenos Aires, Argentina. Contacto: ${contacto}.</p>
     <h3>¿Qué datos guardamos?</h3>
@@ -603,8 +603,11 @@ function textoLegal(cual) {
     <h3>¿Para qué los usamos?</h3>
     <p>Solo para que la app funcione para ti: mostrarte tu información, armar tu plan de comidas y tus resúmenes. <b>No vendemos, no alquilamos ni cedemos tus datos</b>, y no los usamos para publicidad. La única excepción es la lectura con IA, solo si tú la activas (ver más abajo).</p>
     <p>Para mejorar el servicio podemos ver cifras generales sin identificar a nadie (por ejemplo, cuántas personas usan la app).</p>
-    <h3>Lectura de estudios con IA (opcional)</h3>
-    <p>Si activas "Completar con IA", cada vez que tocas <b>✨ Leer</b> el archivo elegido se envía a OpenAI, un proveedor externo, únicamente para transcribir los valores del estudio. Solo se envía ese archivo y solo cuando lo pides. Puedes desactivarlo en ⚙️ Ajustes; sin tu aceptación no se envía nada.</p>
+    <h3>Funciones con IA (opcionales)</h3>
+    <p>Si las activas, usamos OpenAI, un proveedor externo:</p>
+    <p>• <b>Leer estudios:</b> cada vez que tocas <b>✨ Leer</b>, el archivo elegido se envía únicamente para transcribir sus valores.<br>
+    • <b>Recetas con IA:</b> se envían los alimentos que no comen en casa, tus focos de alimentación (por ejemplo "triglicéridos", sin valores) y las pautas de tu nutricionista si las cargaste, para proponer recetas. No se envían tu nombre ni tu email.</p>
+    <p>Solo se envía algo cuando lo pides. Puedes desactivarlas en ⚙️ Ajustes; sin tu aceptación no se envía nada.</p>
     <h3>Familia</h3>
     <p>Si te unes a una familia, los demás integrantes ven tu nombre y los alimentos que marcaste que no comes. <b>No ven</b> tus datos de salud, hábitos ni notas.</p>
     <h3>¿Qué ve el administrador?</h3>
@@ -906,10 +909,11 @@ function cajaAdjuntos(raiz, destinoInicial, opciones = {}) {
 function pedirConsentIA() {
   if (perfil().consentIA === true) return Promise.resolve(true);
   return new Promise((resolve) => {
-    modal(`<h2>✨ Completar con IA</h2>
-      <p>Para leer los valores, <b>el archivo que elijas se envía a OpenAI</b> (la empresa de ChatGPT), que lo procesa y devuelve los números.</p>
-      <ul><li>Solo se envía ese archivo, y solo cuando tocas <b>✨ Leer</b>.</li>
-      <li>La IA solo transcribe: <b>no interpreta ni da indicaciones médicas</b>.</li>
+    modal(`<h2>✨ Usar IA</h2>
+      <p>Las funciones con IA usan <b>OpenAI</b> (la empresa de ChatGPT):</p>
+      <ul><li><b>Leer estudios:</b> se envía el archivo que elijas, solo cuando tocas <b>✨ Leer</b>.</li>
+      <li><b>Recetas:</b> se envían los alimentos que no comen, tus focos (por ejemplo "triglicéridos", sin valores) y las pautas de tu nutricionista si las cargaste. Nunca tu nombre ni tu email.</li>
+      <li>La IA <b>no da indicaciones médicas</b>: transcribe valores y propone recetas de cocina.</li>
       <li>Puede equivocarse: <b>revisa los valores</b> antes de guardar.</li>
       <li>Puedes desactivarlo cuando quieras en ⚙️ Ajustes.</li></ul>
       <button class="btn full" data-ok>Acepto, usar la IA</button><button class="btn full borde mt" data-no>No, gracias</button>`, (o) => {
@@ -1043,7 +1047,9 @@ function planDeHoy(fecha = hoyStr()) {
   if (i < 0 || i > 6) return null;
   return p.dias[i];
 }
-const receta = (id) => RECETAS.find((r) => r.id === id);
+const recetasIA = () => fuente().recetasIA || [];
+const receta = (id) => RECETAS.find((r) => r.id === id) || recetasIA().find((r) => r.id === id);
+const nombreReceta = (r) => (r.ia ? '✨ ' : '') + r.n;
 
 async function vistaHoy() {
   const hoy = hoyStr();
@@ -1089,7 +1095,7 @@ async function vistaHoy() {
     ${plan ? MOMENTOS.map(([m, nom, ic]) => {
       const rc = receta(plan[m]); if (!rc) return '';
       const ok = (d.comidas || {})[m];
-      return `<div class="check ${ok ? 'ok' : ''}" data-c="${m}"><span class="caja">✓</span><span class="txt"><small>${ic} ${nom} · ${horaDe(m)}</small><br>${esc(rc.n)}</span></div>`;
+      return `<div class="check ${ok ? 'ok' : ''}" data-c="${m}"><span class="caja">✓</span><span class="txt"><small>${ic} ${nom} · ${horaDe(m)}</small><br>${esc(nombreReceta(rc))}</span></div>`;
     }).join('') : `<p class="mut">Todavía no tienes plan esta semana.</p><button class="btn full" onclick="ir('comida')">Armar mi plan de comidas</button>`}
   </div>
 
@@ -1147,7 +1153,64 @@ function excluidos() {
 function recetasPermitidas() {
   const ex = excluidos();
   const no = new Set([...(perfil().noReceta || []), ...(S.familia ? S.familia.datos.noReceta || [] : [])]);
-  return RECETAS.filter((r) => !r.ing.some((i) => ex.has(i)) && !no.has(r.id));
+  return [...RECETAS, ...recetasIA()].filter((r) => !r.ing.some((i) => ex.has(i)) && !no.has(r.id));
+}
+
+/* ---------- Focos: el plan se adapta a los análisis (reglas fijas, sin IA) ---------- */
+const FOCOS = {
+  trigliceridos: { n: 'Triglicéridos', ic: '🐟', que: 'Más pescado y legumbres, menos harinas blancas, y nada de azúcar ni alcohol.' },
+  colesterol: { n: 'Colesterol', ic: '🫀', que: 'Más fibra (avena, legumbres, verduras) y grasas buenas; menos frituras, fiambres y carne grasa.' },
+  glucemia: { n: 'Glucemia', ic: '🩸', que: 'Menos harinas y almidones (pan, arroz, fideos, papa) y fruta entera en vez de licuados.' },
+  acido_urico: { n: 'Ácido úrico', ic: '💧', que: 'Menos carne roja y sardinas; más lácteos descremados y agua.' },
+  peso: { n: 'Peso', ic: '⚖️', que: 'Preparaciones livianas, menos harinas y más verdura.' },
+};
+async function calcularFocos() {
+  const [est, pes] = await Promise.all([registros('estudio'), registros('peso')]);
+  const lab = est.find((r) => r.datos.tipo === 'Análisis de sangre');
+  const ib = est.find(ES_INBODY);
+  const d = lab ? lab.datos : {};
+  const lista = [];
+  const n = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+  if (n(d.tg) >= 150) lista.push({ k: 'trigliceridos', motivo: `Triglicéridos ${d.tg} mg/dL (lo deseable es menos de 150)` });
+  if (n(d.ldl) >= 130 || n(d.ct) >= 200) lista.push({ k: 'colesterol', motivo: [n(d.ct) >= 200 && `colesterol total ${d.ct}`, n(d.ldl) >= 130 && `LDL ${d.ldl}`].filter(Boolean).join(' y ') + ' mg/dL' });
+  if (n(d.glu) >= 100 || n(d.hba1c) >= 5.7) lista.push({ k: 'glucemia', motivo: n(d.glu) >= 100 ? `Glucemia ${d.glu} mg/dL (lo deseable en ayunas es menos de 100)` : `HbA1c ${d.hba1c}%` });
+  if (n(d.au) > 7) lista.push({ k: 'acido_urico', motivo: `Ácido úrico ${d.au} mg/dL` });
+  // Peso: el registro más reciente entre "Peso" e InBody
+  const candidatos = [pes[0] && { f: pes[0].fecha, v: n(pes[0].datos.peso) }, ib && { f: ib.fecha, v: n(ib.datos.ib_peso) }].filter((x) => x && x.v);
+  const ultPeso = candidatos.sort((a, b) => b.f.localeCompare(a.f))[0];
+  const alt = n(perfil().altura);
+  const imc = ultPeso && alt ? ultPeso.v / ((alt / 100) ** 2) : null;
+  if (imc >= 25) lista.push({ k: 'peso', motivo: `IMC ${imc.toFixed(1)} (peso ${ultPeso.v} kg)` });
+  // guardar las claves (sin valores) para poder compartirlas con la familia si el usuario quiere
+  const claves = lista.map((x) => x.k);
+  if (JSON.stringify(claves) !== JSON.stringify(perfil().focos || [])) await guardarPerfil({ focos: claves });
+  return { lista, lab, fechaLab: lab && lab.fecha };
+}
+// focos que usa el plan: los míos + los que otros integrantes eligieron compartir
+function focosDelPlan() {
+  const f = new Set(perfil().focos || []);
+  if (S.familia) S.miembros.filter((m) => m.id !== S.usuario.id).forEach((m) => (m.focos || []).forEach((k) => f.add(k)));
+  return f;
+}
+const ALMIDON = ['pan_integral', 'harina_maiz', 'harina_integral', 'pan_rallado', 'fideos_integrales', 'arroz_integral', 'papa', 'galletas_arroz'];
+const FIBRA = ['avena', 'lentejas', 'garbanzos', 'porotos'];
+function pesoReceta(r, focos) {
+  const tiene = (lista) => r.ing.some((i) => lista.includes(i));
+  const alm = tiene(ALMIDON), fib = tiene(FIBRA), roja = tiene(['carne', 'cerdo']);
+  let w = 1;
+  if (focos.has('trigliceridos')) { if (r.tag === 'pescado') w *= 2.5; if (r.tag === 'legumbre') w *= 2; if (alm) w *= 0.5; if (r.id === 'licuado') w *= 0.4; }
+  if (focos.has('colesterol')) { if (fib) w *= 2; if (r.tag === 'pescado') w *= 1.5; if (roja) w *= 0.6; }
+  if (focos.has('glucemia')) { if (alm) w *= 0.4; if (r.id === 'licuado') w *= 0.3; if (fib) w *= 1.5; }
+  if (focos.has('acido_urico')) { if (roja) w *= 0.4; if (r.ing.includes('sardinas')) w *= 0.2; if (tiene(['yogur', 'leche', 'queso'])) w *= 1.3; }
+  if (focos.has('peso')) { if (alm) w *= 0.6; }
+  if (r.ia) w *= 1.3; // dar lugar a las recetas nuevas
+  return w;
+}
+function azarPesado(lista, pesos) {
+  const total = pesos.reduce((a, b) => a + b, 0);
+  let x = Math.random() * total;
+  for (let i = 0; i < lista.length; i++) { x -= pesos[i]; if (x <= 0) return lista[i]; }
+  return lista[lista.length - 1];
 }
 function chipsExclusion(set, attr) {
   return `<p class="mut mb0">Grupos completos:</p>` +
@@ -1162,6 +1225,7 @@ function lunesDe(fecha) {
 
 function generarPlan(inicio) {
   const ok = recetasPermitidas();
+  const focos = focosDelPlan();
   const de = (m) => ok.filter((r) => r.m.includes(m));
   const dias = [];
   const usados = {};
@@ -1172,7 +1236,8 @@ function generarPlan(inicio) {
     if (!c.length) return null;
     // menos usadas primero
     const min = Math.min(...c.map((r) => usados[r.id] || 0));
-    const r = azar(c.filter((x) => (usados[x.id] || 0) === min));
+    const menos = c.filter((x) => (usados[x.id] || 0) === min);
+    const r = azarPesado(menos, menos.map((x) => pesoReceta(x, focos)));
     usados[r.id] = (usados[r.id] || 0) + 1;
     return r.id;
   };
@@ -1186,15 +1251,16 @@ function generarPlan(inicio) {
     // pescado días 1 y 4; legumbres días 2 y 5
     const tagA = i === 0 || i === 3 ? 'pescado' : i === 1 || i === 4 ? 'legumbre' : null;
     dia.a = elegir('a', ev, tagA);
-    dia.c = elegir('c', [...ev, dia.a]);
+    // con triglicéridos altos, una cena más con pescado
+    dia.c = elegir('c', [...ev, dia.a], focos.has('trigliceridos') && i === 5 ? 'pescado' : null);
     dias.push(dia);
   }
-  return { inicio, dias, creado: hoyStr() };
+  return { inicio, dias, creado: hoyStr(), focos: [...focos] };
 }
 
 async function vistaComida() {
   const sub = S.sub.comida || 'plan';
-  const tabs = [['plan', '📅 Plan semanal'], ['compras', '🛒 Compras'], ['excluir', '🚫 Lo que no como'], ['familia', '👨‍👩‍👧 Familia'], ['nutri', '👩‍⚕️ Mi nutricionista'], ['guia', '💡 Guía']];
+  const tabs = [['plan', '📅 Plan semanal'], ['compras', '🛒 Compras'], ['excluir', '🚫 Lo que no como'], ['familia', '👨‍👩‍👧 Familia'], ['nutri', '👩‍⚕️ Mi nutricionista'], ...(S.config.ia ? [['ideas', '✨ Recetas con IA']] : []), ['guia', '💡 Guía']];
   let cuerpo = '';
   await cargarFamilia();
   const p = perfil();
@@ -1207,10 +1273,23 @@ async function vistaComida() {
     if (!(p.excluye && p.excluye.length) && !p.excluyeOk) {
       cuerpo += `<div class="card suave"><p class="mb0">Antes de armar el plan, marca <b>lo que no comes</b> para que no aparezca.</p><button class="btn full mt" onclick="S.sub.comida='excluir';render()">Marcar lo que no como</button></div>`;
     }
+    const fx = await calcularFocos();
+    const focosPlan = focosDelPlan();
+    if (focosPlan.size) {
+      const compartidos = [...focosPlan].filter((k) => !fx.lista.some((x) => x.k === k));
+      const desact = plan && vigente && JSON.stringify([...(plan.focos || [])].sort()) !== JSON.stringify([...focosPlan].sort());
+      cuerpo += `<div class="card"><h2>🎯 Tu plan se adapta a tus análisis</h2>
+        ${fx.lista.map((x) => `<div class="lista-item"><b>${FOCOS[x.k].ic} ${FOCOS[x.k].n}</b><br><small class="mut">${esc(x.motivo)}${x.k !== 'peso' && fx.fechaLab ? ` · análisis del ${fechaCorta(fx.fechaLab)}` : ''}</small><br><small>${FOCOS[x.k].que}</small></div>`).join('')}
+        ${compartidos.map((k) => `<div class="lista-item"><b>${FOCOS[k].ic} ${FOCOS[k].n}</b> <span class="badge">familia</span><br><small>${FOCOS[k].que}</small></div>`).join('')}
+        ${desact ? '<div class="nota">Tus análisis cambiaron desde que armaste este plan. Toca <b>🔄 Rehacer</b> para aplicarlos.</div>' : ''}
+        <p class="mut mb0 mt"><small>Son pautas generales de alimentación. No reemplazan lo que te indique tu médico o nutricionista.</small></p></div>`;
+    } else if (!fx.lab) {
+      cuerpo += `<div class="card suave"><small>🎯 Carga tu último análisis de sangre en <b>Salud → Estudios</b> y el plan se va a adaptar a tus valores (triglicéridos, colesterol, glucemia…).</small></div>`;
+    }
     const nutri = p.nutri || {};
     if (nutri.pautas) cuerpo += `<div class="card suave"><small>👩‍⚕️ <b>Tienes pautas de tu nutricionista.</b> Lo que indicó va primero: usa este plan solo como ideas que encajen con sus pautas.</small><button class="btn chico sec mt" onclick="S.sub.comida='nutri';render()">Ver mis pautas</button></div>`;
     if (!vigente) {
-      cuerpo += `<div class="card"><h2>Plan de los próximos 7 días</h2><p class="mut">Comidas simples, caseras y económicas, pensadas para bajar triglicéridos y colesterol.</p>
+      cuerpo += `<div class="card"><h2>Plan de los próximos 7 días</h2><p class="mut">Comidas simples, caseras y económicas${focosPlan.size ? ', adaptadas a tus análisis' : ''}.</p>
       <button class="btn full" id="gen">✨ Armar mi plan de 7 días</button></div>`;
     } else {
       if (S.familia) cuerpo += `<div class="card suave" style="padding:10px 14px"><small>👨‍👩‍👧 Plan compartido de <b>${esc(S.familia.nombre)}</b> · ${personas()} personas · sin lo que no come nadie de la casa</small></div>`;
@@ -1223,7 +1302,7 @@ async function vistaComida() {
           ${MOMENTOS.map(([m, nom, ic]) => {
             const r = receta(dia[m]);
             return `<div class="comida"><div style="flex:1"><div class="mom">${ic} ${nom} · ${horaDe(m)}</div>
-              <div>${r ? esc(r.n) : '<span class="mut">—</span>'}</div></div>
+              <div>${r ? esc(nombreReceta(r)) : '<span class="mut">—</span>'}</div></div>
               <button class="btn chico borde" data-ver="${i}|${m}" title="Ver receta">👁</button>
               <button class="btn chico borde" data-cam="${i}|${m}" title="Cambiar">🔄</button></div>`;
           }).join('')}
@@ -1274,10 +1353,32 @@ async function vistaComida() {
         <div class="card"><h2>Integrantes con cuenta</h2>${S.miembros.map((m) => `<div class="lista-item"><b>${esc(m.nombre)}</b>${m.id === S.usuario.id ? ' <span class="badge">tú</span>' : ''}<br><small>${(m.excluye || []).length ? 'No come: ' + m.excluye.map((k) => (ING[k] || [k])[0]).join(', ') : 'Come de todo'}${m.excluyeTxt ? ' · ' + esc(m.excluyeTxt) : ''}</small></div>`).join('')}</div>
         <div class="card"><h2>¿Cuántos comen en casa?</h2><p class="mut">Contando a quienes no tienen cuenta (por ejemplo los chicos). Se usa para la lista de compras.</p>
           <div class="fila"><button class="btn sec chico" data-pers="-1">−</button><div class="big" style="min-width:60px;text-align:center">${personas()}</div><button class="btn sec chico" data-pers="1">+</button></div></div>
+        <div class="card"><h2>🎯 Mis análisis en el plan familiar</h2>
+          <p class="mut">Si lo activas, el plan de la familia también tiene en cuenta tus focos (por ejemplo "triglicéridos"). Los demás <b>no ven tus valores</b>, solo que el plan se adapta.</p>
+          <div class="check ${p.compartirFocos ? 'ok' : ''}" id="fam-focos"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">Usar mis análisis para el plan familiar</span></div></div>
         <div class="card"><h2>Lo que no come alguien sin cuenta</h2><p class="mut">Por ejemplo, un hijo o un abuelo. Lo que marques acá tampoco aparece en el plan.</p>
           ${chipsExclusion(extra, 'x')}</div>
         <button class="btn full borde" id="fam-salir" style="color:var(--rojo)">Salir de la familia</button>`;
     }
+  }
+
+  if (sub === 'ideas') {
+    await calcularFocos();
+    const lista = recetasIA();
+    const fp = focosDelPlan();
+    cuerpo = `<div class="card"><h2>✨ Recetas nuevas con IA</h2>
+      <p class="mut">La IA propone recetas caseras con los ingredientes que comen en casa${fp.size ? `, enfocadas en ${[...fp].map((k) => FOCOS[k].n.toLowerCase()).join(', ')}` : ''}${(p.nutri || {}).pautas ? ' y respetando las pautas de tu nutricionista' : ''}. Se suman a tu plan.</p>
+      <label class="f">¿Para qué momento?</label>
+      <select class="i" id="ia-mom"><option value="">Variadas</option>${TODOS_MOMENTOS.map(([m, nom]) => `<option value="${m}">${nom}</option>`).join('')}</select>
+      <label class="f">¿Alguna idea o antojo? (opcional)</label>
+      <input class="i" id="ia-idea" placeholder="Ej.: algo rápido con pollo, una cena calentita">
+      <button class="btn full mt" id="ia-gen">✨ Sugerir 4 recetas</button></div>
+    <div class="card"><h2>Mis recetas de IA ${lista.length ? `<span class="badge">${lista.length}</span>` : ''}</h2>
+      ${lista.length ? lista.slice().reverse().map((r) => `<div class="lista-item"><div class="fila entre"><b>${esc(r.n)}</b><span class="fila" style="gap:6px"><button class="btn chico sec" data-ver-ia="${r.id}">Ver</button><button class="btn chico borde" data-del-ia="${r.id}">🗑</button></span></div>
+        <small class="mut">${TODOS_MOMENTOS.filter(([m]) => r.m.includes(m)).map(([, nom]) => nom).join(' · ')}</small>${r.porque ? `<br><small>${esc(r.porque)}</small>` : ''}</div>`).join('')
+      : '<p class="mut mb0">Todavía no generaste recetas.</p>'}
+      ${lista.length ? '<p class="mut mt mb0"><small>Aparecen al tocar 🔄 en una comida del plan y al rehacer la semana.</small></p>' : ''}</div>
+    <div class="nota">Las recetas son sugerencias generales de cocina saludable. Revisa los ingredientes y, si tienes indicaciones médicas, sigue lo que te dijo tu profesional.</div>`;
   }
 
   if (sub === 'nutri') {
@@ -1342,7 +1443,8 @@ async function vistaComida() {
   document.querySelectorAll('[data-ver]').forEach((el) => (el.onclick = () => {
     const [i, m] = el.dataset.ver.split('|');
     const r = receta(fuente().plan.dias[i][m]); if (!r) return;
-    modal(`<div class="fila entre"><h2 class="mb0">${esc(r.n)}</h2><button class="btn chico borde" data-x>✕</button></div>
+    modal(`<div class="fila entre"><h2 class="mb0">${esc(nombreReceta(r))}</h2><button class="btn chico borde" data-x>✕</button></div>
+      ${r.ia ? `<p class="mut mb0"><small>Receta sugerida por IA${r.porque ? ' · ' + esc(r.porque) : ''}</small></p>` : ''}
       <p class="mt">${esc(r.p)}</p><p class="mut"><b>Lleva:</b> ${r.ing.map((k) => (ING[k] || [k])[0]).join(', ')}</p>${personas() > 1 ? `<p class="mut">👨‍👩‍👧 Las cantidades son por persona: multiplica por ${personas()}.</p>` : ''}
       <button class="btn full borde mt" data-nunca style="color:var(--rojo)">No me gusta, no me la propongas más</button>`, (o) => {
       $('[data-x]', o).onclick = () => o.remove();
@@ -1394,6 +1496,34 @@ async function vistaComida() {
       };
     });
   };
+  if (sub === 'ideas') {
+    $('#ia-gen').onclick = async () => {
+      if (!(await pedirConsentIA())) return;
+      const b = $('#ia-gen'); b.disabled = true; b.textContent = '⏳ Cocinando ideas…';
+      try {
+        const r = await api('POST', '/api/ia/recetas', {
+          momento: $('#ia-mom').value || null, idea: $('#ia-idea').value,
+          excluye: [...excluidos()], focos: [...focosDelPlan()],
+          evitar: recetasPermitidas().map((x) => x.n),
+        });
+        if (!r.recetas.length) throw new Error('Las recetas que propuso la IA llevaban algo que no comen, así que las descarté. Prueba de nuevo o con otra idea.');
+        const todas = [...recetasIA(), ...r.recetas].slice(-40);
+        await guardarComida({ recetasIA: todas });
+        toast(`${r.recetas.length === 1 ? '1 receta nueva' : r.recetas.length + ' recetas nuevas'} ✓${r.descartadas ? ` (descarté ${r.descartadas} que llevaban algo que no comen)` : ''}${r.restantes >= 0 ? ` · te quedan ${r.restantes} usos de IA este mes` : ''}`);
+        render();
+      } catch (e) { toast(e.message); b.disabled = false; b.textContent = '✨ Sugerir 4 recetas'; }
+    };
+    document.querySelectorAll('[data-del-ia]').forEach((x) => (x.onclick = async () => {
+      if (!confirm('¿Borrar esta receta?')) return;
+      await guardarComida({ recetasIA: recetasIA().filter((r) => r.id !== x.dataset.delIa) }); render();
+    }));
+    document.querySelectorAll('[data-ver-ia]').forEach((x) => (x.onclick = () => {
+      const r = receta(x.dataset.verIa);
+      modal(`<div class="fila entre"><h2 class="mb0">✨ ${esc(r.n)}</h2><button class="btn chico borde" data-x>✕</button></div>
+        ${r.porque ? `<p class="mut mb0"><small>${esc(r.porque)}</small></p>` : ''}
+        <p class="mt">${esc(r.p)}</p><p class="mut"><b>Lleva:</b> ${r.ing.map((k) => (ING[k] || [k])[0]).join(', ')}</p>`, (o) => ($('[data-x]', o).onclick = () => o.remove()));
+    }));
+  }
   if (sub === 'nutri') {
     cajaAdjuntos($('#app'), { ambito: 'nutricion' });
     $('#n-ok').onclick = async () => {
@@ -1408,6 +1538,9 @@ async function vistaComida() {
   const fu = $('#fam-unir'); if (fu) fu.onclick = async () => {
     try { const r = await api('POST', '/api/familia/unirse', { codigo: $('#fam-cod').value }); S.familia = r.familia; S.miembros = r.miembros; toast('¡Bienvenido a ' + r.familia.nombre + '!'); render(); }
     catch (e) { toast(e.message); }
+  };
+  const ffo = $('#fam-focos'); if (ffo) ffo.onclick = async () => {
+    ffo.classList.toggle('ok'); await guardarPerfil({ compartirFocos: ffo.classList.contains('ok') }); toast('Guardado ✓');
   };
   const fco = $('#fam-comp'); if (fco) fco.onclick = () => compartir(`Te invito a "${S.familia.nombre}" en Vamos Pa' Arriba 🌱\nEntra a ${location.origin}, crea tu cuenta y en Comida → Familia escribe el código: ${S.familia.codigo}`);
   const fs = $('#fam-salir'); if (fs) fs.onclick = async () => {
@@ -1433,7 +1566,7 @@ async function vistaComida() {
 }
 function elegirReceta(opc, cb) {
   modal(`<div class="fila entre"><h2 class="mb0">Elegir otra opción</h2><button class="btn chico borde" data-x>✕</button></div>
-    ${opc.map((r) => `<div class="lista-item" data-r="${r.id}" style="cursor:pointer"><b>${esc(r.n)}</b><br><small>${esc(r.p.slice(0, 90))}…</small></div>`).join('')}`, (o) => {
+    ${opc.map((r) => `<div class="lista-item" data-r="${r.id}" style="cursor:pointer"><b>${esc(nombreReceta(r))}</b><br><small>${esc(r.p.slice(0, 90))}…</small></div>`).join('')}`, (o) => {
     $('[data-x]', o).onclick = () => o.remove();
     o.querySelectorAll('[data-r]').forEach((el) => (el.onclick = () => { o.remove(); cb(el.dataset.r); }));
   });
@@ -2120,7 +2253,7 @@ async function vistaAjustes() {
     ${htmlCampos(CAMPOS_PERFIL, p)}<button class="btn full mt" id="perf-ok">Guardar</button></div>
   <div class="card"><h2>Mi día</h2>
     <div class="check ${oracionOn ? 'ok' : ''}" id="aj-oracion"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🙏 Incluir momentos de oración</span></div>
-    ${S.config.ia ? `<div class="check ${p.consentIA === true ? 'ok' : ''}" id="aj-ia"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">✨ Permitir leer mis estudios con IA (OpenAI)</span></div>` : ''}
+    ${S.config.ia ? `<div class="check ${p.consentIA === true ? 'ok' : ''}" id="aj-ia"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">✨ Permitir funciones con IA (OpenAI)</span></div>` : ''}
     <button class="btn full sec mt" onclick="bienvenida().then(()=>ir('hoy'))">Ver de nuevo la bienvenida</button></div>
   <div class="card"><h2>Contraseña</h2>
     <label class="f">Actual</label><input class="i" type="password" id="pw-a" autocomplete="current-password">

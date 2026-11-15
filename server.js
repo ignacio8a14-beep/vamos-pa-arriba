@@ -286,7 +286,8 @@ async function datosFamilia(uid) {
   if (!fid) return { familia: null, miembros: [] };
   const f = await pool.query('SELECT id, nombre, codigo, datos FROM familias WHERE id=$1', [fid]);
   const m = await pool.query(
-    `SELECT id, nombre, perfil->'excluye' AS excluye, perfil->>'excluyeTxt' AS "excluyeTxt"
+    `SELECT id, nombre, perfil->'excluye' AS excluye, perfil->>'excluyeTxt' AS "excluyeTxt",
+            CASE WHEN perfil->>'compartirFocos' = 'true' THEN perfil->'focos' END AS focos
      FROM usuarios WHERE familia_id=$1 ORDER BY id`, [fid]);
   return { familia: f.rows[0] || null, miembros: m.rows.map((r) => ({ ...r, excluye: r.excluye || [] })) };
 }
@@ -669,6 +670,151 @@ app.post('/api/ia/leer', auth, wrap(async (req, res) => {
     notas: datos.notas ? String(datos.notas).slice(0, 400) : null,
     restantes: limiteIA - usos.rows[0].n - 1,
   });
+}));
+
+const ING_NOMBRES = {
+  avena: 'Avena',
+  leche: 'Leche descremada',
+  yogur: 'Yogur natural sin azúcar',
+  queso: 'Queso fresco / blanco',
+  huevo: 'Huevos',
+  pan_integral: 'Pan integral',
+  harina_maiz: 'Harina de maíz precocida (arepa)',
+  harina_integral: 'Harina integral',
+  pan_rallado: 'Pan rallado',
+  galletas_arroz: 'Galletas de arroz',
+  arroz_integral: 'Arroz integral',
+  fideos_integrales: 'Fideos integrales',
+  lentejas: 'Lentejas',
+  garbanzos: 'Garbanzos',
+  porotos: 'Porotos / caraotas negras',
+  atun: 'Atún al natural (lata)',
+  sardinas: 'Sardinas (lata)',
+  mani: 'Maní sin sal',
+  semillas: 'Semillas (lino, chía o girasol)',
+  aceite: 'Aceite de oliva o canola',
+  pollo: 'Pollo (pechuga o pata-muslo sin piel)',
+  carne: 'Carne magra (nalga, peceto, cuadril)',
+  cerdo: 'Cerdo magro (solomillo, carré)',
+  pescado: 'Pescado (merluza u otro)',
+  banana: 'Banana',
+  manzana: 'Manzana',
+  fruta: 'Fruta de estación',
+  papa: 'Papa',
+  batata: 'Batata',
+  zapallo: 'Zapallo / calabaza',
+  zanahoria: 'Zanahoria',
+  tomate: 'Tomate',
+  lechuga: 'Lechuga / hojas verdes',
+  cebolla: 'Cebolla',
+  morron: 'Morrón',
+  zapallito: 'Zapallito',
+  acelga: 'Acelga o espinaca',
+  brocoli: 'Brócoli',
+  berenjena: 'Berenjena',
+  repollo: 'Repollo',
+  chauchas: 'Chauchas',
+  pepino: 'Pepino',
+};
+
+// ---------- recetas nuevas con IA ----------
+// La IA solo propone recetas caseras con ingredientes de la lista permitida. No arma dietas ni da indicaciones médicas.
+const FOCOS_TXT = {
+  trigliceridos: 'triglicéridos altos: priorizar pescado y legumbres, pocas harinas blancas, nada de azúcar',
+  colesterol: 'colesterol alto: más fibra (avena, legumbres, verduras), grasas buenas, nada frito ni fiambres',
+  glucemia: 'glucemia elevada: pocas harinas y almidones, porciones chicas de pan/arroz/fideos, fruta entera y no licuados',
+  acido_urico: 'ácido úrico alto: poca carne roja, evitar sardinas, preferir lácteos descremados',
+  peso: 'bajar de peso: preparaciones livianas, pocas harinas, mucha verdura',
+};
+// Segunda barrera: descarta recetas cuyo texto menciona algo excluido aunque no lo haya listado en "ing"
+const GENERICAS = ['harina', 'pan', 'arroz', 'fideos', 'queso', 'yogur', 'aceite', 'fruta', 'carne', 'semillas', 'galletas', 'leche'];
+const sinTildes = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const RAICES = { leche: 'leche', yogur: 'yogur', queso: 'queso', carne: 'carne', semillas: 'semilla', galletas_arroz: 'galletas de arroz', fideos_integrales: 'fideo', harina_maiz: 'harina de maiz', arroz_integral: 'arroz integral', aceite: 'aceite' };
+function raiz(nombre) {
+  const w = sinTildes(nombre).replace(/[()]/g, '').split(/\s+/);
+  const r = GENERICAS.includes(w[0]) && w[1] && w[1] !== 'de' ? w[0] + ' ' + w[1] : w[0];
+  return r.replace(/s$/, '');
+}
+function mencionaExcluido(texto, excluye) {
+  const t = sinTildes(texto);
+  return [...excluye].some((k) => { const r = RAICES[k] || raiz(ING_NOMBRES[k]); return r.length > 3 && t.includes(r); });
+}
+const MOMENTOS_IA = { d: 'desayuno', k: 'colación de media mañana', a: 'almuerzo', m: 'merienda', c: 'cena (liviana)' };
+
+app.post('/api/ia/recetas', auth, wrap(async (req, res) => {
+  if (!OPENAI_API_KEY) return res.status(503).json({ error: 'La IA no está activada' });
+  const u = await pool.query("SELECT perfil, ia_limite FROM usuarios WHERE id=$1", [req.uid]);
+  const perfil = u.rows[0].perfil || {};
+  if (perfil.consentIA !== true) return res.status(403).json({ error: 'Primero tienes que aceptar el uso de la IA' });
+  const limiteIA = u.rows[0].ia_limite ?? IA_LIMITE_MES;
+  const usos = await pool.query("SELECT count(*)::int n FROM ia_usos WHERE usuario_id=$1 AND ok AND creado > date_trunc('month', now())", [req.uid]);
+  if (usos.rows[0].n >= limiteIA) return res.status(429).json({ error: `Llegaste al límite de ${limiteIA} usos de IA de este mes` });
+
+  const b = req.body || {};
+  const excluye = new Set((Array.isArray(b.excluye) ? b.excluye : []).filter((k) => ING_NOMBRES[k]));
+  const permitidos = Object.keys(ING_NOMBRES).filter((k) => !excluye.has(k));
+  const focos = (Array.isArray(b.focos) ? b.focos : []).filter((k) => FOCOS_TXT[k]);
+  const momento = MOMENTOS_IA[b.momento] ? b.momento : null;
+  const idea = String(b.idea || '').slice(0, 200);
+  const evitar = (Array.isArray(b.evitar) ? b.evitar : []).slice(0, 80).map((x) => String(x).slice(0, 80));
+  const pautas = perfil.nutri && perfil.nutri.pautas ? String(perfil.nutri.pautas).slice(0, 1500) : '';
+
+  const prompt = `Eres un cocinero de comida casera argentina, simple y económica. Propón 4 recetas nuevas.
+Momento del día: ${momento ? MOMENTOS_IA[momento] : 'variado (mezcla desayunos, almuerzos, cenas livianas y meriendas o colaciones)'}.
+${idea ? `Pedido del usuario: "${idea}".` : ''}
+Ingredientes principales disponibles (usa SOLO estos; sal, especias, ajo, limón, vinagre y agua se pueden usar siempre): ${permitidos.map((k) => ING_NOMBRES[k]).join(', ')}.
+${excluye.size ? `NUNCA uses: ${[...excluye].map((k) => ING_NOMBRES[k]).join(', ')}.` : ''}
+${focos.length ? `Enfoque de alimentación saludable general: ${focos.map((k) => FOCOS_TXT[k]).join('; ')}.` : 'Enfoque: alimentación saludable general.'}
+${pautas ? `Pautas de su nutricionista (respétalas siempre, tienen prioridad): ${pautas}` : ''}
+${evitar.length ? `No repitas estas recetas que ya tiene: ${evitar.join('; ')}.` : ''}
+Reglas: preparación de hasta 30 minutos cuando se pueda; nada frito; sin azúcar agregada; sin alcohol; porción para 1 persona con medidas caseras (taza, cucharada, puñado); no menciones calorías, suplementos, medicamentos ni promesas de salud; español claro usando "tú".
+En "ing" pon solo las claves de la lista de ingredientes que usa la receta. En "porque" explica en una frase simple por qué encaja con el enfoque.`;
+
+  const ESQ = {
+    type: 'object', additionalProperties: false, required: ['recetas'],
+    properties: { recetas: { type: 'array', items: {
+      type: 'object', additionalProperties: false, required: ['n', 'momentos', 'ing', 'tag', 'p', 'porque'],
+      properties: {
+        n: { type: 'string', description: 'Nombre corto de la receta' },
+        momentos: { type: 'array', items: { type: 'string', enum: Object.keys(MOMENTOS_IA) }, description: 'd=desayuno, k=colación, a=almuerzo, m=merienda, c=cena' },
+        ing: { type: 'array', items: { type: 'string', enum: permitidos } },
+        tag: { type: 'string', enum: ['pescado', 'legumbre', 'ninguno'] },
+        p: { type: 'string', description: 'Preparación en 2 a 4 frases con cantidades caseras' },
+        porque: { type: 'string' },
+      } } } },
+  };
+  let r, cuerpo;
+  try {
+    r = await fetch(OPENAI_URL + '/responses', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + OPENAI_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: OPENAI_MODEL, input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }] }],
+        text: { format: { type: 'json_schema', name: 'recetas', strict: true, schema: ESQ } }, store: false }),
+    });
+    cuerpo = await r.json();
+  } catch (e) { console.error('OpenAI', e.message); return res.status(502).json({ error: 'No se pudo conectar con la IA. Prueba de nuevo en un rato.' }); }
+  if (!r.ok) {
+    console.error('OpenAI', r.status, JSON.stringify(cuerpo).slice(0, 500));
+    await pool.query('INSERT INTO ia_usos (usuario_id, ok) VALUES ($1, false)', [req.uid]);
+    return res.status(502).json({ error: 'La IA no pudo generar recetas en este momento.' });
+  }
+  const texto = (cuerpo.output || []).flatMap((o) => o.content || []).find((c) => c.type === 'output_text');
+  let datos;
+  try { datos = JSON.parse(texto.text); } catch { return res.status(502).json({ error: 'La IA devolvió una respuesta que no se pudo leer. Prueba de nuevo.' }); }
+  await pool.query('INSERT INTO ia_usos (usuario_id) VALUES ($1)', [req.uid]);
+  // Validación: solo ingredientes permitidos y momentos válidos
+  const propuestas = (datos.recetas || []).length;
+  const recetas = (datos.recetas || []).map((x) => ({
+    id: 'ia_' + crypto.randomBytes(5).toString('hex'),
+    n: String(x.n || '').slice(0, 80),
+    m: [...new Set((x.momentos || []).filter((k) => MOMENTOS_IA[k]))].join(''),
+    ing: [...new Set((x.ing || []).filter((k) => ING_NOMBRES[k] && !excluye.has(k)))],
+    tag: x.tag === 'pescado' || x.tag === 'legumbre' ? x.tag : undefined,
+    p: String(x.p || '').slice(0, 700),
+    porque: String(x.porque || '').slice(0, 200),
+    ia: true, creada: new Date().toISOString().slice(0, 10),
+  })).filter((x) => x.n && x.m && x.ing.length && x.p && !mencionaExcluido(x.n + ' ' + x.p, excluye));
+  res.json({ recetas, descartadas: propuestas - recetas.length, restantes: limiteIA - usos.rows[0].n - 1 });
 }));
 
 // ---------- SPA ----------
