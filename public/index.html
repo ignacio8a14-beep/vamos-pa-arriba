@@ -6,7 +6,24 @@
 <meta name="theme-color" content="#1f6f5c">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="description" content="Plan de comidas para toda la familia, rutinas sin gimnasio, calma para dormir mejor y tu salud ordenada en un solo lugar. Desde el celular.">
+<!-- Vista previa al compartir el link (WhatsApp, Facebook, Telegram…). __URL__ lo completa el servidor -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Vamos Pa' Arriba">
+<meta property="og:locale" content="es_AR">
+<meta property="og:title" content="Vamos Pa' Arriba · Cuerpo, mente y espíritu">
+<meta property="og:description" content="Plan de comidas para toda la familia, rutinas sin gimnasio, calma para dormir mejor y tu salud ordenada. Un día a la vez.">
+<meta property="og:url" content="__URL__/">
+<meta property="og:image" content="__URL__/og.jpg?v=1">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Vamos Pa' Arriba: comida, movimiento, calma y salud">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Vamos Pa' Arriba · Cuerpo, mente y espíritu">
+<meta name="twitter:description" content="Plan de comidas para toda la familia, rutinas sin gimnasio, calma para dormir mejor y tu salud ordenada.">
+<meta name="twitter:image" content="__URL__/og.jpg?v=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Vamos Pa' Arriba</title>
 <style>
@@ -334,7 +351,7 @@ function actualizarMomentos() { MOMENTOS = TODOS_MOMENTOS.filter(([m]) => m !== 
 // Ejercicios: valores por nivel (1 a 6). t: 'r' repeticiones, 's' segundos
 const RUTINAS = {
   casa: {
-    n: 'Fuerza en casa', ic: '🏠', rondas: [1, 2, 2, 3, 3, 3], desc: 'Sin equipos. Una silla, una pared y una mochila con botellas de agua.',
+    n: 'Fuerza en casa', ic: '🏠', lugar: 'casa', rondas: [1, 2, 2, 3, 3, 3], desc: 'Sin equipos. Una silla, una pared y una mochila con botellas de agua.',
     ej: [
       { n: 'Marcha en el lugar', t: 's', v: [60, 60, 90, 90, 120, 120], d: 'Para entrar en calor. Sube las rodillas a un ritmo cómodo y mueve los brazos.' },
       { n: 'Sentadilla a la silla', t: 'r', v: [8, 10, 12, 12, 15, 15], d: 'Siéntate apenas en la silla y levántate sin usar las manos. Espalda derecha, peso en los talones.' },
@@ -347,7 +364,7 @@ const RUTINAS = {
     ],
   },
   parque: {
-    n: 'Circuito en el parque', ic: '🌳', rondas: [1, 2, 2, 2, 3, 3], desc: 'Un banco, un escalón o cordón y espacio para caminar.',
+    n: 'Circuito en el parque', ic: '🌳', lugar: 'parque', rondas: [1, 2, 2, 2, 3, 3], desc: 'Un banco, un escalón o cordón y espacio para caminar.',
     ej: [
       { n: 'Caminata rápida', t: 's', v: [300, 300, 300, 300, 300, 300], d: 'Para entrar en calor: 5 minutos a paso ligero.' },
       { n: 'Flexiones apoyado en el banco', t: 'r', v: [6, 8, 10, 10, 12, 15], d: 'Manos en el respaldo o el asiento del banco, cuerpo recto. Cuanto más alto el apoyo, más fácil.' },
@@ -360,7 +377,7 @@ const RUTINAS = {
     ],
   },
   core: {
-    n: 'Abdomen y zona media', ic: '🎯', rondas: [1, 2, 2, 2, 3, 3], desc: 'Abdominales que cuidan la espalda. Respira siempre: nunca aguantes el aire haciendo fuerza.',
+    n: 'Abdomen y zona media', ic: '🎯', lugar: 'todos', rondas: [1, 2, 2, 2, 3, 3], desc: 'Abdominales que cuidan la espalda. Respira siempre: nunca aguantes el aire haciendo fuerza.',
     ej: [
       { n: 'Respiración con abdomen', t: 's', v: [30, 30, 30, 30, 30, 30], d: 'Boca arriba, rodillas dobladas, mano en la panza. Al exhalar, lleva el ombligo suave hacia la espalda.' },
       { n: 'Abdominales cortos', t: 'r', v: [8, 10, 12, 15, 15, 20], d: 'Boca arriba, rodillas dobladas. Despega solo los hombros del piso mirando al techo. Exhala al subir y no tires del cuello.' },
@@ -371,7 +388,7 @@ const RUTINAS = {
     ],
   },
   estirar: {
-    n: 'Estiramientos', ic: '🧘', rondas: [1, 1, 1, 1, 1, 1], desc: '5 minutos. Ideal después de caminar o antes de dormir.',
+    n: 'Estiramientos', ic: '🧘', lugar: 'todos', rondas: [1, 1, 1, 1, 1, 1], desc: '5 minutos. Ideal después de caminar o antes de dormir.',
     ej: [
       { n: 'Cuello', t: 's', v: [30, 30, 30, 30, 30, 30], d: 'Lleva la oreja hacia el hombro, suave, de un lado y del otro.' },
       { n: 'Hombros y pecho', t: 's', v: [30, 30, 30, 30, 30, 30], d: 'Entrelaza las manos detrás de la espalda y abre el pecho.' },
@@ -382,6 +399,51 @@ const RUTINAS = {
     ],
   },
 };
+// Gimnasio: se trabaja por series (no en circuito) y se anota el peso de cada ejercicio
+const SERIES_GYM = [2, 2, 3, 3, 4, 4];
+const REPS_GYM = [12, 12, 12, 10, 10, 8];
+const GYM = {
+  cardio: { id: 'g_cardio', n: 'Entrada en calor: bicicleta o cinta', t: 's', v: [300, 300, 300, 300, 300, 300], d: '5 minutos a un ritmo suave, que puedas conversar.' },
+  prensa: { id: 'g_prensa', n: 'Prensa de piernas', t: 'r', kg: true, v: REPS_GYM, d: 'Pies al ancho de hombros. Baja hasta que las rodillas formen un ángulo recto y empuja sin trabar las rodillas al final.' },
+  pecho: { id: 'g_pecho_maq', n: 'Press de pecho en máquina', t: 'r', kg: true, v: REPS_GYM, d: 'Espalda bien apoyada. Empuja hacia adelante exhalando y vuelve lento, sin soltar el peso de golpe.' },
+  jalon: { id: 'g_jalon', n: 'Jalón al pecho en polea', t: 'r', kg: true, v: REPS_GYM, d: 'Agarre un poco más ancho que los hombros. Lleva la barra al pecho bajando los codos, sin balancearte.' },
+  remo: { id: 'g_remo_sent', n: 'Remo sentado en polea', t: 'r', kg: true, v: REPS_GYM, d: 'Espalda recta. Lleva el agarre hacia el abdomen juntando los omóplatos y vuelve lento.' },
+  hombro: { id: 'g_hombro_mancu', n: 'Press de hombros con mancuernas (sentado)', t: 'r', kg: true, v: REPS_GYM, d: 'Sentado con respaldo, sube las mancuernas por encima de la cabeza sin arquear la espalda baja.' },
+  femoral: { id: 'g_femoral', n: 'Camilla de femorales', t: 'r', kg: true, v: REPS_GYM, d: 'Boca abajo, lleva los talones hacia los glúteos y baja controlando.' },
+  plancha: { id: 'g_plancha', n: 'Plancha', t: 's', v: [20, 25, 30, 35, 40, 45], d: 'Antebrazos y puntas de pie (o rodillas) en el piso, cuerpo recto como una tabla. Respira normal.' },
+  banca: { id: 'g_banca', n: 'Press de banca (barra o mancuernas)', t: 'r', kg: true, v: REPS_GYM, d: 'Pies firmes en el piso. Baja controlando hasta rozar el pecho y empuja exhalando. Con barra, mejor con alguien que te asista.' },
+  remo1: { id: 'g_remo_mancu', n: 'Remo con mancuerna a un brazo', t: 'r', kg: true, lado: true, v: REPS_GYM, d: 'Una mano y una rodilla en el banco, espalda recta. Lleva la mancuerna hacia la cadera.' },
+  militar: { id: 'g_militar', n: 'Press militar con mancuernas', t: 'r', kg: true, v: REPS_GYM, d: 'De pie o sentado, abdomen firme. Sube las mancuernas sobre la cabeza sin arquear la espalda.' },
+  vuelos: { id: 'g_vuelos', n: 'Vuelos laterales', t: 'r', kg: true, v: [12, 12, 12, 12, 12, 10], d: 'Brazos casi rectos, sube las mancuernas hacia los costados hasta la altura de los hombros. Peso liviano.' },
+  biceps: { id: 'g_biceps', n: 'Curl de bíceps con mancuernas', t: 'r', kg: true, v: REPS_GYM, d: 'Codos pegados al cuerpo, sube sin balancear el torso y baja lento.' },
+  triceps: { id: 'g_triceps', n: 'Extensión de tríceps en polea', t: 'r', kg: true, v: REPS_GYM, d: 'Codos quietos al costado del cuerpo. Estira los brazos hacia abajo y vuelve controlando.' },
+  goblet: { id: 'g_goblet', n: 'Sentadilla goblet con mancuerna', t: 'r', kg: true, v: REPS_GYM, d: 'Mancuerna pegada al pecho. Baja como para sentarte, espalda recta y talones apoyados.' },
+  rumano: { id: 'g_rumano', n: 'Peso muerto rumano con mancuernas', t: 'r', kg: true, v: REPS_GYM, d: 'Rodillas apenas flexionadas. Baja las mancuernas pegadas a las piernas llevando la cadera atrás, con la espalda recta.' },
+  cuadri: { id: 'g_cuadri', n: 'Sillón de cuádriceps', t: 'r', kg: true, v: REPS_GYM, d: 'Espalda apoyada. Estira las piernas sin trabar las rodillas y baja lento.' },
+  gemelos: { id: 'g_gemelos', n: 'Gemelos (en máquina o de pie)', t: 'r', kg: true, v: [15, 15, 15, 12, 12, 12], d: 'Sube a puntas de pie lo más alto que puedas y baja lento.' },
+  bicho: { id: 'g_bicho', n: 'Bicho muerto', t: 'r', lado: true, v: [8, 8, 10, 10, 12, 12], d: 'Boca arriba, estira un brazo y la pierna contraria sin despegar la espalda baja del piso.' },
+};
+Object.assign(RUTINAS, {
+  gym_full: { n: 'Gimnasio: cuerpo completo', ic: '🏋️', lugar: 'gimnasio', modo: 'series', rondas: SERIES_GYM,
+    desc: 'Ideal para empezar: todo el cuerpo en una sesión, 2 o 3 veces por semana.',
+    ej: [GYM.cardio, GYM.prensa, GYM.pecho, GYM.jalon, GYM.remo, GYM.hombro, GYM.femoral, GYM.plancha] },
+  gym_sup: { n: 'Gimnasio: tren superior', ic: '💪', lugar: 'gimnasio', modo: 'series', rondas: SERIES_GYM,
+    desc: 'Pecho, espalda, hombros y brazos. Altérnala con tren inferior.',
+    ej: [GYM.cardio, GYM.banca, GYM.jalon, GYM.remo1, GYM.militar, GYM.vuelos, GYM.biceps, GYM.triceps] },
+  gym_inf: { n: 'Gimnasio: tren inferior y zona media', ic: '🦵', lugar: 'gimnasio', modo: 'series', rondas: SERIES_GYM,
+    desc: 'Piernas, glúteos y abdomen.',
+    ej: [GYM.cardio, GYM.goblet, GYM.prensa, GYM.rumano, GYM.cuadri, GYM.femoral, GYM.gemelos, GYM.bicho, GYM.plancha] },
+});
+const NOMBRE_EJ = Object.fromEntries(Object.values(GYM).map((e) => [e.id, e.n]));
+const LUGARES = [['casa', '🏠 Casa'], ['parque', '🌳 Parque'], ['gimnasio', '🏋️ Gimnasio']];
+const lugarEntreno = () => perfil().lugar || 'casa';
+// último peso usado en cada ejercicio (según las sesiones guardadas)
+function ultimosPesos() {
+  const out = {};
+  (S.cache.ejercicio || []).forEach((r) => Object.entries(r.datos.pesos || {}).forEach(([k, kg]) => { if (out[k] === undefined) out[k] = kg; }));
+  return out;
+}
+
 const CAMINATA_MIN = [20, 25, 30, 30, 35, 40];
 const CAMINATA_TXT = [
   'Paso cómodo, que puedas conversar.',
@@ -538,7 +600,7 @@ function vistaLogin(modo = 'login') {
     </div>
     ${!reset && !olvido ? `<div class="grid2" style="margin:10px 0 14px">
       <div class="card mb0"><div style="font-size:1.6rem">🥗</div><b>Comida</b><br><small class="mut">Plan semanal casero y económico para toda la familia, con lista de compras.</small></div>
-      <div class="card mb0"><div style="font-size:1.6rem">🚶</div><b>Movimiento</b><br><small class="mut">Rutinas en casa o en el parque, con temporizador y 6 niveles.</small></div>
+      <div class="card mb0"><div style="font-size:1.6rem">🚶</div><b>Movimiento</b><br><small class="mut">Rutinas en casa, en el parque o en el gimnasio, con temporizador y 6 niveles.</small></div>
       <div class="card mb0"><div style="font-size:1.6rem">🕊️</div><b>Calma</b><br><small class="mut">Respiración, meditación, oración y ayuda para dormir mejor.</small></div>
       <div class="card mb0"><div style="font-size:1.6rem">📋</div><b>Mi salud</b><br><small class="mut">Estudios, consultas y sueño en un lugar, con resumen para tu médico.</small></div>
     </div>` : ''}
@@ -670,7 +732,7 @@ const OBJETIVOS = ['Comer mejor', 'Moverme más', 'Bajar de peso', 'Dormir mejor
 function bienvenida() {
   return new Promise((resolve) => {
     const nombre = (S.usuario.nombre || '').split(' ')[0];
-    const datos = { objetivos: [], oracion: true };
+    const datos = { objetivos: [], oracion: true, lugar: 'casa' };
     let paso = 0;
     const fs = document.createElement('div');
     fs.className = 'full-screen';
@@ -694,6 +756,8 @@ function bienvenida() {
           <label class="f" style="color:#fff">Peso (kg)</label><input class="i" id="b-peso" type="number" inputmode="decimal" step="any">
           <label class="f" style="color:#fff;margin-top:14px">¿Qué quieres lograr? (elige las que quieras)</label>
           <div>${OBJETIVOS.map((o) => `<span class="chip ${datos.objetivos.includes(o) ? 'on' : ''}" data-ob="${esc(o)}">${esc(o)}</span>`).join('')}</div>
+          <label class="f" style="color:#fff;margin-top:14px">¿Dónde vas a entrenar?</label>
+          <div>${LUGARES.map(([k, t]) => `<span class="chip ${datos.lugar === k ? 'on' : ''}" data-lug="${k}">${t}</span>`).join('')}</div>
           <label class="check" style="border:none;color:#fff" id="b-oracion"><span class="caja" style="border-color:#fff">✓</span><span>Incluir un momento de oración en mi día</span></label>
         </div>`;
       if (paso === 2) html += `
@@ -711,6 +775,9 @@ function bienvenida() {
         const o = c.dataset.ob; const i = datos.objetivos.indexOf(o);
         i >= 0 ? datos.objetivos.splice(i, 1) : datos.objetivos.push(o); c.classList.toggle('on');
       }));
+      fs.querySelectorAll('[data-lug]').forEach((c) => (c.onclick = () => {
+        datos.lugar = c.dataset.lug; fs.querySelectorAll('[data-lug]').forEach((x) => x.classList.toggle('on', x === c));
+      }));
       const bo = $('#b-oracion', fs);
       if (bo) { bo.classList.toggle('ok', datos.oracion); bo.onclick = () => { datos.oracion = !datos.oracion; bo.classList.toggle('ok', datos.oracion); }; }
       const ant = $('[data-ant]', fs); if (ant) ant.onclick = () => { paso--; pintar(); };
@@ -723,7 +790,7 @@ function bienvenida() {
         paso++; pintar();
       };
       fs.querySelectorAll('[data-fin]').forEach((b) => (b.onclick = async () => {
-        const cambios = { bienvenida: true, objetivos: datos.objetivos, oracion: datos.oracion };
+        const cambios = { bienvenida: true, objetivos: datos.objetivos, oracion: datos.oracion, lugar: datos.lugar };
         if (datos.edad) cambios.edad = datos.edad;
         if (datos.altura) cambios.altura = datos.altura;
         try {
@@ -1589,7 +1656,23 @@ async function vistaMover() {
   const enNivel = ej.filter((r) => (r.datos.nivel || 1) === nivel && r.datos.sensacion === 'Bien').length;
   const sugerirSubir = nivel < 6 && enNivel >= 6;
 
-  $('#app').innerHTML = `${encabezado('Mover el cuerpo', 'Sin gimnasio, a tu ritmo')}
+  const lugar = lugarEntreno();
+  const todas = !!S.sub.moverTodas;
+  const rutinas = Object.entries(RUTINAS).filter(([, r]) => todas || r.lugar === lugar || r.lugar === 'todos')
+    .sort(([, a], [, b]) => (a.lugar === lugar ? 0 : a.lugar === 'todos' ? 1 : 2) - (b.lugar === lugar ? 0 : b.lugar === 'todos' ? 1 : 2));
+  // historial de pesos por ejercicio (más viejo → más nuevo)
+  const hist = {};
+  ej.slice().reverse().forEach((r) => Object.entries(r.datos.pesos || {}).forEach(([k, kg]) => (hist[k] = hist[k] || []).push({ f: r.fecha, kg: Number(kg) })));
+  const sugerencia = {
+    casa: 'Caminata 5 días · Fuerza en casa 2 días no seguidos · Abdomen 2 días · Estiramientos cuando quieras.',
+    parque: 'Caminata 5 días · Circuito en el parque 2 días no seguidos · Abdomen 2 días · Estiramientos cuando quieras.',
+    gimnasio: nivel <= 3
+      ? 'Gimnasio 2 o 3 días no seguidos con la rutina de cuerpo completo · Caminata o cardio suave los otros días · Estiramientos al terminar.'
+      : 'Gimnasio 3 o 4 días alternando tren superior y tren inferior · Caminata o cardio suave los otros días · Estiramientos al terminar.',
+  }[lugar];
+
+  $('#app').innerHTML = `${encabezado('Mover el cuerpo', lugar === 'gimnasio' ? 'En el gimnasio, a tu ritmo' : 'Sin gimnasio, a tu ritmo')}
+  <div class="fila wrap" style="margin-bottom:10px"><span class="mut">📍 Entreno en:</span>${LUGARES.map(([k, t]) => `<span class="chip ${lugar === k ? 'on' : ''}" data-lugar="${k}">${t}</span>`).join('')}</div>
   <div class="card verde">
     <div class="fila entre"><div><small style="color:#fff;opacity:.85">Esta semana</small><div class="big">${minSem} min</div></div>
     <div style="text-align:right"><small style="color:#fff;opacity:.85">Tu nivel</small><div class="big">${nivel}<small style="color:#fff;font-size:1rem">/6</small></div></div></div>
@@ -1604,17 +1687,30 @@ async function vistaMover() {
     <div class="grid2"><button class="btn" id="cam-ya">▶ Empezar</button><button class="btn sec" id="cam-reg">Ya caminé</button></div>
   </div>
 
-  ${Object.entries(RUTINAS).map(([k, r]) => `<div class="card">
-    <div class="fila entre"><h2 class="mb0">${r.ic} ${r.n}</h2><span class="badge">${r.rondas[nivel - 1]} ${r.rondas[nivel - 1] === 1 ? 'ronda' : 'rondas'}</span></div>
+  ${rutinas.map(([k, r]) => {
+    const series = r.modo === 'series';
+    const ult = ultimosPesos();
+    return `<div class="card">
+    <div class="fila entre"><h2 class="mb0">${r.ic} ${r.n}</h2><span class="badge">${r.rondas[nivel - 1]} ${series ? 'series' : r.rondas[nivel - 1] === 1 ? 'ronda' : 'rondas'}</span></div>
     <p class="mut">${r.desc}</p>
     <details style="margin-bottom:10px"><summary style="cursor:pointer;color:var(--verde);font-weight:600">Ver los ${r.ej.length} ejercicios</summary>
-      ${r.ej.map((e, i) => `<div class="lista-item"><div class="fila entre"><b>${i + 1}. ${esc(e.n)}</b><span class="badge">${e.t === 's' ? mmss(e.v[nivel - 1]) : e.v[nivel - 1] + (e.lado ? ' x lado' : ' rep.')}</span></div><small>${esc(e.d)}</small></div>`).join('')}
-      ${r.rondas[nivel - 1] > 1 ? `<p class="mut mt mb0"><small>Haz la lista completa ${r.rondas[nivel - 1]} veces, con 30 s de descanso entre ejercicios y 1 min entre rondas.</small></p>` : ''}
+      ${r.ej.map((e, i) => `<div class="lista-item"><div class="fila entre"><b>${i + 1}. ${esc(e.n)}</b><span class="badge">${e.t === 's' ? mmss(e.v[nivel - 1]) : (series ? r.rondas[nivel - 1] + ' × ' : '') + e.v[nivel - 1] + (e.lado ? ' x lado' : ' rep.')}</span></div><small>${esc(e.d)}</small>${e.kg && ult[e.id] != null ? `<br><small class="mut">Última vez: ${ult[e.id]} kg</small>` : ''}</div>`).join('')}
+      ${series ? `<p class="mut mt mb0"><small>Haz ${r.rondas[nivel - 1]} series de cada ejercicio, con 75 s de descanso entre series. Elige un peso que puedas mover con buena técnica sintiendo que te quedan 2 o 3 repeticiones más. La primera vez, pídele al profe que te muestre la técnica.</small></p>`
+        : r.rondas[nivel - 1] > 1 ? `<p class="mut mt mb0"><small>Haz la lista completa ${r.rondas[nivel - 1]} veces, con 30 s de descanso entre ejercicios y 1 min entre rondas.</small></p>` : ''}
     </details>
-    <button class="btn full" data-rut="${k}">▶ Empezar</button></div>`).join('')}
+    <button class="btn full" data-rut="${k}">▶ Empezar</button></div>`;
+  }).join('')}
+  <p class="centro"><a href="#" id="ver-todas" style="color:var(--verde);font-weight:600">${todas ? 'Ver solo las de mi lugar' : 'Ver rutinas de otros lugares'}</a></p>
+
+  ${Object.keys(hist).length ? `<div class="card"><h2>🏋️ Mis pesos</h2>
+    <table class="val"><tr><th>Ejercicio</th><th>Primero</th><th>Último</th><th>Mejor</th></tr>
+    ${Object.entries(hist).map(([k, h]) => { const best = Math.max(...h.map((x) => x.kg)); const ult = h[h.length - 1]; const sube = ult.kg > h[0].kg;
+      return `<tr><td>${esc(NOMBRE_EJ[k] || k)}</td><td>${h[0].kg}</td><td><b>${ult.kg}</b> ${sube ? '<span style="color:var(--verde)">↑</span>' : ''}</td><td>${best}</td></tr>`; }).join('')}
+    </table><p class="mut mt mb0"><small>Si en la última sesión hiciste todas las series con buena técnica y te sobró energía, la próxima prueba subir 1 a 2,5 kg.</small></p></div>` : ''}
 
   <div class="card"><h2>📆 Sugerencia semanal</h2>
-    <p>Caminata 5 días · Fuerza (casa o parque) 2 días no seguidos · Abdomen 2 días · Estiramientos cuando quieras.</p>
+    <p>${sugerencia}</p>
+    ${lugar === 'gimnasio' ? '<p class="mut"><small>Exhala al hacer fuerza y no aguantes la respiración. Si es tu primera vez o vuelves después de mucho tiempo, consulta con tu médico y pide guía al profe del gimnasio.</small></p>' : ''}
     <div class="nota">Si sientes dolor en el pecho, falta de aire fuera de lo normal, mareo o palpitaciones que no ceden al parar: detente y consulta. Si aparece alguna molestia o dolor (por ejemplo en una articulación), baja la intensidad y anótalo para comentarlo con tu médico.</div>
   </div>
 
@@ -1628,6 +1724,8 @@ async function vistaMover() {
   $('#cam-ya').onclick = () => caminata(nivel);
   $('#cam-reg').onclick = () => finSesion('Caminata', nivel, CAMINATA_MIN[nivel - 1], 'caminata', true);
   document.querySelectorAll('[data-rut]').forEach((el) => (el.onclick = () => reproducirRutina(el.dataset.rut, nivel)));
+  document.querySelectorAll('[data-lugar]').forEach((el) => (el.onclick = async () => { await guardarPerfil({ lugar: el.dataset.lugar }); S.sub.moverTodas = false; render(); }));
+  $('#ver-todas').onclick = (e) => { e.preventDefault(); S.sub.moverTodas = !todas; render(); };
 }
 
 function caminata(nivel) {
@@ -1671,11 +1769,25 @@ function reproducirRutina(clave, nivel) {
   const R = RUTINAS[clave];
   const rondas = R.rondas[nivel - 1];
   const pasos = [];
-  for (let r = 1; r <= rondas; r++) R.ej.forEach((e, i) => {
-    pasos.push({ ...e, val: e.v[nivel - 1], ronda: r });
-    const ultimo = r === rondas && i === R.ej.length - 1;
-    if (!ultimo && clave !== 'estirar') pasos.push({ descanso: true, val: i === R.ej.length - 1 ? 60 : 30 });
-  });
+  const series = R.modo === 'series';
+  if (series) {
+    R.ej.forEach((e, i) => {
+      const n = e.t === 's' ? 1 : rondas;
+      for (let k = 1; k <= n; k++) {
+        pasos.push({ ...e, val: e.v[nivel - 1], serie: k, series: n });
+        const ultimo = i === R.ej.length - 1 && k === n;
+        if (!ultimo) pasos.push({ descanso: true, val: k < n ? 75 : 90 });
+      }
+    });
+  } else {
+    for (let r = 1; r <= rondas; r++) R.ej.forEach((e, i) => {
+      pasos.push({ ...e, val: e.v[nivel - 1], ronda: r });
+      const ultimo = r === rondas && i === R.ej.length - 1;
+      if (!ultimo && clave !== 'estirar') pasos.push({ descanso: true, val: i === R.ej.length - 1 ? 60 : 30 });
+    });
+  }
+  const anteriores = ultimosPesos();
+  const pesos = {};
   let idx = 0, t = 0, pausa = false;
   const inicio = Date.now();
   const fs = document.createElement('div');
@@ -1688,10 +1800,12 @@ function reproducirRutina(clave, nivel) {
     const restante = p.t === 's' || p.descanso ? p.val - t : null;
     fs.className = 'full-screen' + (p.descanso ? ' calmo' : '');
     fs.innerHTML = `<button class="cerrar" data-x>✕</button>
-      <small style="opacity:.8">${R.n} · ${p.descanso ? 'Descanso' : `Ronda ${p.ronda} de ${rondas}`} · paso ${idx + 1}/${pasos.length}</small>
+      <small style="opacity:.8">${R.n} · ${p.descanso ? 'Descanso' : series ? (p.series > 1 ? `Serie ${p.serie} de ${p.series}` : 'Una vez') : `Ronda ${p.ronda} de ${rondas}`} · paso ${idx + 1}/${pasos.length}</small>
       <h1 style="margin-top:14px">${p.descanso ? '😮‍💨 Descansa' : esc(p.n)}</h1>
       ${p.descanso ? `<p>Respira tranquilo.${sig ? ' Lo que sigue: <b>' + esc(sig.n) + '</b>' : ''}</p>` : `<p class="paso-txt">${esc(p.d)}</p>`}
       <div class="reloj">${restante !== null ? mmss(restante) : p.val + (p.lado ? ' x lado' : ' rep.')}</div>
+      ${!p.descanso && p.kg ? `<div style="margin:0 0 14px"><label style="opacity:.85;display:block;margin-bottom:4px">Peso (kg)${anteriores[p.id] != null ? ` · la vez pasada: ${anteriores[p.id]} kg` : ''}</label>
+        <input class="i" id="kg" type="number" inputmode="decimal" step="0.5" value="${pesos[p.id] ?? anteriores[p.id] ?? ''}" style="max-width:130px;text-align:center;font-size:1.4rem;font-weight:700"></div>` : ''}
       <div class="fila" style="gap:10px">
         ${restante !== null ? `<button class="btn sec" data-p>${pausa ? '▶' : '⏸'}</button>` : ''}
         <button class="btn" data-ok>${restante !== null ? 'Saltar ⏭' : 'Listo ✓'}</button>
@@ -1701,10 +1815,12 @@ function reproducirRutina(clave, nivel) {
     $('[data-ok]', fs).onclick = siguiente;
   };
   const siguiente = () => {
+    const kg = $('#kg', fs);
+    if (kg && kg.value !== '') pesos[pasos[idx].id] = Number(String(kg.value).replace(',', '.'));
     idx++; t = 0;
     if (idx >= pasos.length) {
       cerrar(); campana(660);
-      finSesion(R.n, nivel, Math.max(1, Math.round((Date.now() - inicio) / 60000)), clave === 'estirar' ? 'fuerza' : 'fuerza');
+      finSesion(R.n, nivel, Math.max(1, Math.round((Date.now() - inicio) / 60000)), 'fuerza', false, Object.keys(pesos).length ? { pesos } : {});
       return;
     }
     vibrar(); pintar();
@@ -1723,7 +1839,7 @@ function reproducirRutina(clave, nivel) {
   pintar();
 }
 
-function finSesion(rutina, nivel, minutos, habito, manual) {
+function finSesion(rutina, nivel, minutos, habito, manual, extra = {}) {
   modal(`<h2>${manual ? 'Registrar ' + rutina.toLowerCase() : '¡Bien hecho! 🎉'}</h2>
     ${htmlCampos([
       { k: 'minutos', l: 'Minutos', t: 'number', def: minutos },
@@ -1734,7 +1850,7 @@ function finSesion(rutina, nivel, minutos, habito, manual) {
     <button class="btn full mt" data-ok>Guardar</button>`, (o) => {
     $('[data-ok]', o).onclick = async () => {
       const v = leerCampos([{ k: 'minutos', t: 'number' }, { k: 'sensacion', t: 'select' }, { k: 'molestia', t: 'check' }, { k: 'nota', t: 'text' }], o);
-      await nuevoRegistro('ejercicio', hoyStr(), { rutina, nivel, ...v });
+      await nuevoRegistro('ejercicio', hoyStr(), { rutina, nivel, ...extra, ...v });
       await marcarHabito(habito);
       o.remove(); toast('Sesión guardada 💪'); render();
     };

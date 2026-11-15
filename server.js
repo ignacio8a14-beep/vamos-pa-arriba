@@ -818,9 +818,12 @@ En "ing" pon solo las claves de la lista de ingredientes que usa la receta. En "
 }));
 
 // ---------- SPA ----------
+// index.html se sirve con la URL pública completa en las etiquetas de vista previa (og:image necesita URL absoluta)
+const INDEX_HTML = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'No existe' });
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  const base = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  res.set('Cache-Control', 'no-cache').type('html').send(INDEX_HTML.split('__URL__').join(base));
 });
 
 // ---------- arranque ----------
