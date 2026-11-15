@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f5c">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Vamos Pa' Arriba</title>
+<style>
+:root{
+  --verde:#1f6f5c; --verde2:#2b8a72; --verde-claro:#e3f2ec; --crema:#faf7f2; --texto:#1e2a27;
+  --gris:#6b7774; --borde:#e2e6e4; --ambar:#e6a23c; --rojo:#c8553d; --azul:#3c6e9e; --blanco:#fff;
+  --sombra:0 2px 10px rgba(0,0,0,.06); --radio:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--crema);color:var(--texto);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0 0 .4em;line-height:1.2}
+h1{font-size:1.45rem} h2{font-size:1.15rem} h3{font-size:1rem}
+p{margin:.3em 0 .6em}
+small,.mut{color:var(--gris)}
+#app{max-width:640px;margin:0 auto;padding:16px 14px calc(96px + env(safe-area-inset-bottom))}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.top .ic{background:none;border:none;font-size:1.4rem;padding:6px;cursor:pointer}
+.card{background:var(--blanco);border-radius:var(--radio);box-shadow:var(--sombra);padding:16px;margin-bottom:12px}
+.card.verde{background:var(--verde);color:#fff}
+.card.suave{background:var(--verde-claro)}
+.fila{display:flex;align-items:center;gap:10px}
+.entre{justify-content:space-between}
+.wrap{flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:12px;padding:12px 16px;background:var(--verde);color:#fff;font-weight:600;cursor:pointer;min-height:46px}
+.btn.sec{background:var(--verde-claro);color:var(--verde)}
+.btn.borde{background:transparent;border:1.5px solid var(--borde);color:var(--texto)}
+.btn.ambar{background:var(--ambar)}
+.btn.rojo{background:var(--rojo)}
+.btn.chico{padding:6px 12px;min-height:34px;font-size:.9rem;border-radius:10px}
+.btn.full{width:100%}
+.btn:disabled{opacity:.5}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:999px;border:1.5px solid var(--borde);background:#fff;cursor:pointer;font-size:.92rem;margin:3px}
+.chip.on{background:var(--verde);border-color:var(--verde);color:#fff}
+.chip.no{background:#fbe9e5;border-color:var(--rojo);color:var(--rojo);text-decoration:line-through}
+label.f{display:block;font-size:.88rem;color:var(--gris);margin:10px 0 4px}
+input.i,select.i,textarea.i{width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:12px;background:#fff;outline:none}
+input.i:focus,select.i:focus,textarea.i:focus{border-color:var(--verde2)}
+textarea.i{min-height:80px;resize:vertical}
+.check{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--borde);cursor:pointer;user-select:none}
+.check:last-child{border-bottom:none}
+.check .caja{width:28px;height:28px;border-radius:9px;border:2px solid var(--borde);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;color:#fff}
+.check.ok .caja{background:var(--verde);border-color:var(--verde)}
+.check.ok .txt{color:var(--gris);text-decoration:line-through}
+.check .txt{flex:1}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--borde);display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
+.nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.72rem;color:var(--gris);padding:4px 8px;cursor:pointer;flex:1}
+.nav button span{font-size:1.35rem}
+.nav button.on{color:var(--verde);font-weight:700}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs .chip{white-space:nowrap;margin:0}
+.lista-item{padding:12px 0;border-bottom:1px solid var(--borde)}
+.lista-item:last-child{border-bottom:none}
+.badge{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:999px;background:var(--verde-claro);color:var(--verde);font-weight:600}
+.badge.alto{background:#fbe9e5;color:var(--rojo)}
+.badge.medio{background:#fdf1dc;color:#a8701a}
+.big{font-size:2.2rem;font-weight:800}
+.semana{display:flex;justify-content:space-between;margin-top:8px}
+.semana div{text-align:center;font-size:.75rem;color:var(--gris)}
+.semana .pt{width:30px;height:30px;border-radius:50%;margin:4px auto 0;background:var(--borde);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem}
+.semana .pt.p1{background:#b7dccf}.semana .pt.p2{background:#6fb7a0}.semana .pt.p3{background:var(--verde)}
+.semana .pt.hoy{outline:2px solid var(--ambar);outline-offset:2px}
+.emo{font-size:1.7rem;background:none;border:2px solid transparent;border-radius:12px;padding:4px 6px;cursor:pointer;opacity:.55}
+.emo.on{opacity:1;border-color:var(--verde);background:var(--verde-claro)}
+.agua{display:flex;gap:4px;flex-wrap:wrap}
+.agua button{font-size:1.4rem;background:none;border:none;cursor:pointer;opacity:.25;padding:2px}
+.agua button.on{opacity:1}
+.comida{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--borde)}
+.comida:last-child{border-bottom:none}
+.comida .mom{font-size:.75rem;color:var(--gris);text-transform:uppercase;letter-spacing:.04em}
+.overlay{position:fixed;inset:0;background:rgba(20,30,28,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:var(--crema);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom))}
+.full-screen{position:fixed;inset:0;z-index:60;background:var(--verde);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;overflow:auto}
+.full-screen.calmo{background:linear-gradient(180deg,#1f6f5c,#2c5d78)}
+.full-screen .cerrar{position:absolute;top:calc(12px + env(safe-area-inset-top));right:14px;background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:999px;width:40px;height:40px;font-size:1.2rem;cursor:pointer}
+.full-screen small{color:#fff}
+.full-screen .btn{background:#fff;color:var(--verde)}
+.full-screen .btn.sec{background:rgba(255,255,255,.18);color:#fff}
+.full-screen textarea.i,.full-screen input.i{color:var(--texto)}
+.circulo{width:190px;height:190px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;margin:28px auto;transition:transform 4s ease-in-out;font-size:1.2rem;font-weight:600;box-shadow:0 0 0 18px rgba(255,255,255,.06)}
+.reloj{font-size:3.4rem;font-weight:800;font-variant-numeric:tabular-nums;margin:10px 0}
+.paso-txt{font-size:1.15rem;max-width:460px;margin:10px auto;line-height:1.5}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--texto);color:#fff;padding:10px 16px;border-radius:12px;z-index:80;font-size:.92rem;box-shadow:var(--sombra)}
+table.val{width:100%;border-collapse:collapse;font-size:.9rem}
+table.val th,table.val td{padding:7px 4px;border-bottom:1px solid var(--borde);text-align:left}
+table.val th{color:var(--gris);font-weight:600;font-size:.8rem}
+.login{max-width:420px;margin:8vh auto 0}
+.logo{font-size:2.6rem;text-align:center}
+.centro{text-align:center}
+.mt{margin-top:12px}.mb0{margin-bottom:0}
+.oculto{display:none!important}
+.nota{font-size:.85rem;color:var(--gris);background:#fff;border-left:3px solid var(--ambar);padding:8px 10px;border-radius:8px;margin:8px 0}
+.prog{height:10px;background:var(--borde);border-radius:999px;overflow:hidden}
+.prog div{height:100%;background:var(--verde);transition:width .3s}
+.card.verde .btn{background:#fff;color:var(--verde)}
+.card.verde .prog{background:rgba(255,255,255,.25)}.card.verde .prog div{background:#fff}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav class="nav oculto" id="nav">
+  <button data-v="hoy"><span>🏠</span>Hoy</button>
+  <button data-v="comida"><span>🥗</span>Comida</button>
+  <button data-v="mover"><span>🚶</span>Mover</button>
+  <button data-v="calma"><span>🕊️</span>Calma</button>
+  <button data-v="salud"><span>📋</span>Salud</button>
+</nav>
+
+<script>
+/* =========================================================
+   Vamos Pa' Arriba — app personal
+   ========================================================= */
+
+// ---------- utilidades ----------
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const fechaStr = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const hoyStr = () => fechaStr(new Date());
+const parseF = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const sumarDias = (s, n) => { const d = parseF(s); d.setDate(d.getDate() + n); return fechaStr(d); };
+const difDias = (a, b) => Math.round((parseF(a) - parseF(b)) / 86400000);
+const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const DIAS_C = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const fechaLarga = (s) => { const d = parseF(s); return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`; };
+const fechaCorta = (s) => { const d = parseF(s); return `${d.getDate()}/${d.getMonth() + 1}/${String(d.getFullYear()).slice(2)}`; };
+const azar = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const mmss = (s) => `${Math.floor(s / 60)}:${pad(Math.max(0, Math.floor(s % 60)))}`;
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+function vibrar(ms = 150) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+
+// Campanita suave (Web Audio, sin archivos)
+let audioCtx = null;
+function campana(frec = 528) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = frec;
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 2.5);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 2.6);
+  } catch (e) {}
+}
+
+// Mantener pantalla encendida durante rutinas
+let wakeLock = null;
+async function pantallaEncendida(on) {
+  try {
+    if (on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) {}
+}
+
+// ---------- API ----------
+const S = {
+  token: localStorage.getItem('vpa_token'),
+  usuario: null,
+  vista: 'hoy',
+  sub: {},            // sub-pestañas por vista
+  dias: {},           // cache fecha -> datos
+  familia: null, miembros: [],
+  cache: {},          // tipo -> registros
+};
+
+async function api(metodo, url, cuerpo) {
+  const r = await fetch(url, {
+    method: metodo,
+    headers: { 'Content-Type': 'application/json', ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+  });
+  let data = null;
+  try { data = await r.json(); } catch (e) {}
+  if (r.status === 401 && S.token) { salir(); throw new Error('Sesión vencida'); }
+  if (!r.ok) throw new Error((data && data.error) || 'Error de conexión');
+  return data;
+}
+const perfil = () => (S.usuario && S.usuario.perfil) || {};
+async function guardarPerfil(cambios) {
+  S.usuario = await api('PATCH', '/api/perfil', cambios);
+}
+async function registros(tipo, forzar) {
+  if (!forzar && S.cache[tipo]) return S.cache[tipo];
+  S.cache[tipo] = await api('GET', '/api/registros?tipo=' + tipo);
+  return S.cache[tipo];
+}
+async function nuevoRegistro(tipo, fecha, datos) {
+  const r = await api('POST', '/api/registros', { tipo, fecha, datos });
+  delete S.cache[tipo];
+  return r;
+}
+async function editarRegistro(id, tipo, fecha, datos) {
+  await api('PUT', '/api/registros/' + id, { fecha, datos });
+  delete S.cache[tipo];
+}
+async function borrarRegistro(id, tipo) {
+  await api('DELETE', '/api/registros/' + id);
+  delete S.cache[tipo];
+}
+async function cargarDias(desde, hasta) {
+  const filas = await api('GET', `/api/dias?desde=${desde}&hasta=${hasta}`);
+  filas.forEach((f) => (S.dias[f.fecha] = f.datos));
+}
+async function marcarDia(fecha, cambios) {
+  const r = await api('PUT', '/api/dias/' + fecha, cambios);
+  S.dias[fecha] = r.datos;
+  return r.datos;
+}
+async function marcarHabito(clave, valor = true, fecha = hoyStr()) {
+  if (!S.dias[fecha]) await cargarDias(fecha, fecha);
+  const d = S.dias[fecha] || {};
+  const h = { ...(d.h || {}), [clave]: valor };
+  await marcarDia(fecha, { h });
+}
+
+/* =========================================================
+   DATOS: alimentos, recetas, ejercicios, textos
+   ========================================================= */
+
+// cat = góndola para la lista de compras
+const ING = {
+  avena: ['Avena', 'Almacén'], leche: ['Leche descremada', 'Lácteos'], yogur: ['Yogur natural sin azúcar', 'Lácteos'],
+  queso: ['Queso fresco / blanco', 'Lácteos'], huevo: ['Huevos', 'Almacén'], pan_integral: ['Pan integral', 'Panadería'],
+  harina_maiz: ['Harina de maíz precocida (arepa)', 'Almacén'], harina_integral: ['Harina integral', 'Almacén'],
+  pan_rallado: ['Pan rallado', 'Almacén'], galletas_arroz: ['Galletas de arroz', 'Almacén'],
+  arroz_integral: ['Arroz integral', 'Almacén'], fideos_integrales: ['Fideos integrales', 'Almacén'],
+  lentejas: ['Lentejas', 'Almacén'], garbanzos: ['Garbanzos', 'Almacén'], porotos: ['Porotos / caraotas negras', 'Almacén'],
+  atun: ['Atún al natural (lata)', 'Almacén'], sardinas: ['Sardinas (lata)', 'Almacén'], mani: ['Maní sin sal', 'Almacén'],
+  semillas: ['Semillas (lino, chía o girasol)', 'Almacén'], aceite: ['Aceite de oliva o canola', 'Almacén'],
+  pollo: ['Pollo (pechuga o pata-muslo sin piel)', 'Carnicería'], carne: ['Carne magra (nalga, peceto, cuadril)', 'Carnicería'],
+  cerdo: ['Cerdo magro (solomillo, carré)', 'Carnicería'], pescado: ['Pescado (merluza u otro)', 'Pescadería'],
+  banana: ['Banana', 'Verdulería'], manzana: ['Manzana', 'Verdulería'], fruta: ['Fruta de estación', 'Verdulería'],
+  papa: ['Papa', 'Verdulería'], batata: ['Batata', 'Verdulería'], zapallo: ['Zapallo / calabaza', 'Verdulería'],
+  zanahoria: ['Zanahoria', 'Verdulería'], tomate: ['Tomate', 'Verdulería'], lechuga: ['Lechuga / hojas verdes', 'Verdulería'],
+  cebolla: ['Cebolla', 'Verdulería'], morron: ['Morrón', 'Verdulería'], zapallito: ['Zapallito', 'Verdulería'],
+  acelga: ['Acelga o espinaca', 'Verdulería'], brocoli: ['Brócoli', 'Verdulería'], berenjena: ['Berenjena', 'Verdulería'],
+  repollo: ['Repollo', 'Verdulería'], chauchas: ['Chauchas', 'Verdulería'], pepino: ['Pepino', 'Verdulería'],
+};
+
+// Grupos para excluir de un toque
+const GRUPOS = {
+  'Lácteos': ['leche', 'yogur', 'queso'],
+  'Huevo': ['huevo'],
+  'Pescado y mariscos': ['pescado', 'atun', 'sardinas'],
+  'Cerdo': ['cerdo'],
+  'Carne vacuna': ['carne'],
+  'Pollo': ['pollo'],
+  'Legumbres': ['lentejas', 'garbanzos', 'porotos'],
+  'Gluten / trigo': ['pan_integral', 'harina_integral', 'pan_rallado', 'fideos_integrales'],
+  'Maní y semillas': ['mani', 'semillas'],
+};
+
+// m: d=desayuno, m=merienda, a=almuerzo, c=cena · tag: pescado / legumbre
+const RECETAS = [
+  // Desayunos y meriendas
+  { id: 'avena_banana', n: 'Avena cocida con banana y canela', m: 'dm', ing: ['avena', 'leche', 'banana'], p: 'Cocina 4-5 cucharadas de avena con leche o agua 3-4 minutos. Agrega banana en rodajas y canela. Sin azúcar.' },
+  { id: 'yogur_avena', n: 'Yogur natural con avena y fruta', m: 'dm', ing: ['yogur', 'avena', 'fruta'], p: 'Un pote de yogur natural sin azúcar, 2 cucharadas de avena y fruta picada.' },
+  { id: 'huevos_tostada', n: 'Huevos revueltos con pan integral y tomate', m: 'd', ing: ['huevo', 'pan_integral', 'tomate'], p: '2 huevos revueltos con muy poco aceite, 1-2 rebanadas de pan integral y tomate en rodajas.' },
+  { id: 'tostadas_queso', n: 'Tostadas integrales con queso blanco y tomate', m: 'dm', ing: ['pan_integral', 'queso', 'tomate'], p: '2 tostadas integrales con queso blanco o untable descremado y tomate con orégano.' },
+  { id: 'arepa_huevo', n: 'Arepa con huevo y queso blanco', m: 'd', ing: ['harina_maiz', 'huevo', 'queso'], p: 'Una arepa mediana (no dos 😉) asada en budare o sartén sin aceite, rellena con huevo revuelto y un poco de queso blanco.' },
+  { id: 'arepa_pollo', n: 'Arepa con pollo desmechado y tomate', m: 'd', ing: ['harina_maiz', 'pollo', 'tomate'], p: 'Una arepa mediana con pollo desmechado que sobró de otra comida, tomate y lechuga.' },
+  { id: 'licuado', n: 'Licuado de banana con leche y avena', m: 'dm', ing: ['leche', 'banana', 'avena'], p: 'Licúa 1 banana, 1 vaso de leche descremada y 1 cucharada de avena. Sin azúcar.' },
+  { id: 'fruta_mani', n: 'Fruta + un puñado de maní sin sal', m: 'm', ing: ['fruta', 'mani'], p: 'Una fruta entera y un puñado chico de maní (lo que entra en la palma cerrada).' },
+  { id: 'tostada_huevo', n: 'Tostada integral con huevo duro', m: 'm', ing: ['pan_integral', 'huevo'], p: 'Una tostada integral con un huevo duro en rodajas, sal y pimienta.' },
+  { id: 'yogur_semillas', n: 'Yogur con manzana y semillas', m: 'm', ing: ['yogur', 'manzana', 'semillas'], p: 'Yogur natural, media manzana en cubitos y una cucharadita de semillas.' },
+  { id: 'galletas_queso', n: 'Infusión + galletas de arroz con queso', m: 'm', ing: ['galletas_arroz', 'queso'], p: 'Mate, té o café sin azúcar con 3 galletas de arroz y queso blanco.' },
+  { id: 'bastones_hummus', n: 'Bastones de zanahoria y pepino con hummus', m: 'm', ing: ['zanahoria', 'pepino', 'garbanzos'], p: 'Hummus casero: garbanzos cocidos, limón, ajo, un chorrito de aceite y agua; procesar. Mojar bastones de verdura.' },
+  { id: 'fruta_yogur', n: 'Fruta con yogur natural', m: 'm', ing: ['fruta', 'yogur'], p: 'Una fruta de estación picada con yogur natural sin azúcar.' },
+  // Almuerzos y cenas
+  { id: 'merluza_papas', n: 'Merluza al horno con papas y ensalada', m: 'ac', tag: 'pescado', ing: ['pescado', 'papa', 'lechuga', 'tomate', 'aceite'], p: 'Filet de merluza con limón, ajo y perejil al horno 15-20 min. Papas al horno en cubos (porción chica) y mucha ensalada.' },
+  { id: 'pescado_arroz', n: 'Pescado a la plancha con arroz integral y brócoli', m: 'ac', tag: 'pescado', ing: ['pescado', 'arroz_integral', 'brocoli'], p: 'Pescado a la plancha, media taza de arroz integral cocido y brócoli al vapor con limón.' },
+  { id: 'atun_ensalada', n: 'Ensalada completa de atún, huevo, papa y chauchas', m: 'ac', tag: 'pescado', ing: ['atun', 'huevo', 'papa', 'chauchas', 'tomate'], p: 'Papa y chauchas hervidas, huevo duro, atún al natural escurrido y tomate. Aliño: limón y una cucharadita de aceite.' },
+  { id: 'sardinas_ensalada', n: 'Sardinas con ensalada de papa, zanahoria y huevo', m: 'ac', tag: 'pescado', ing: ['sardinas', 'papa', 'zanahoria', 'huevo'], p: 'Ensalada rusa liviana (sin mayonesa: con yogur natural y limón) + una lata de sardinas escurridas.' },
+  { id: 'fideos_atun', n: 'Fideos integrales con salsa de tomate y atún', m: 'ac', tag: 'pescado', ing: ['fideos_integrales', 'tomate', 'atun', 'cebolla'], p: 'Salsa: cebolla rehogada con poco aceite, tomate triturado y atún. Porción de fideos: un plato playo, no hondo.' },
+  { id: 'pollo_zapallo', n: 'Pollo al horno con zapallo y brócoli', m: 'ac', ing: ['pollo', 'zapallo', 'brocoli', 'aceite'], p: 'Pollo sin piel con pimentón y ajo al horno. Zapallo en cubos asado en la misma fuente y brócoli al vapor.' },
+  { id: 'arroz_pollo', n: 'Arroz integral con pollo y verduras salteadas', m: 'ac', ing: ['arroz_integral', 'pollo', 'zanahoria', 'zapallito', 'morron'], p: 'Saltea pollo en tiras con zanahoria, zapallito y morrón. Sirve con media taza de arroz integral.' },
+  { id: 'milanesas_pure', n: 'Milanesas de pollo al horno con puré de calabaza', m: 'ac', ing: ['pollo', 'huevo', 'pan_rallado', 'zapallo'], p: 'Milanesas de pechuga al horno (no fritas). Puré de calabaza con una pizca de nuez moscada. Ensalada al lado.' },
+  { id: 'sopa_pollo', n: 'Sopa de verduras con pollo desmechado', m: 'c', ing: ['pollo', 'zanahoria', 'zapallo', 'cebolla', 'papa'], p: 'Hierve pollo con cebolla, zanahoria, zapallo y una papa chica. Desmecha el pollo y vuelve a la olla. Ideal para la noche.' },
+  { id: 'wok_pollo', n: 'Wok de pollo con repollo y zanahoria', m: 'ac', ing: ['pollo', 'repollo', 'zanahoria', 'arroz_integral'], p: 'Pollo en tiras salteado con repollo y zanahoria en juliana, salsa de soja (poca). Un poco de arroz integral.' },
+  { id: 'cazuela_pollo', n: 'Cazuela de pollo y garbanzos', m: 'ac', tag: 'legumbre', ing: ['pollo', 'garbanzos', 'tomate', 'cebolla'], p: 'Pollo en trozos con cebolla, tomate y garbanzos cocidos, a fuego lento 25 min con comino y pimentón.' },
+  { id: 'carne_batata', n: 'Carne magra a la plancha con ensalada y batata', m: 'a', ing: ['carne', 'lechuga', 'tomate', 'batata'], p: 'Un bife de nalga o peceto (del tamaño de tu palma) a la plancha, ensalada grande y batata al horno.' },
+  { id: 'zapallitos_rellenos', n: 'Zapallitos rellenos de carne magra', m: 'ac', ing: ['zapallito', 'carne', 'cebolla', 'queso'], p: 'Vacía zapallitos, rehoga la pulpa con cebolla y carne picada magra. Rellena, un poco de queso arriba y horno 20 min.' },
+  { id: 'cerdo_manzana', n: 'Solomillo de cerdo al horno con manzana y batata', m: 'a', ing: ['cerdo', 'manzana', 'batata'], p: 'Solomillo o carré sin grasa visible al horno con manzana en gajos y batata. Romero si tienes.' },
+  { id: 'lentejas_guiso', n: 'Guiso de lentejas con verduras (sin chorizo)', m: 'a', tag: 'legumbre', ing: ['lentejas', 'zanahoria', 'cebolla', 'morron', 'papa'], p: 'Lentejas con cebolla, morrón, zanahoria y una papa en cubos. Condimenta con pimentón y comino en vez de chorizo o panceta.' },
+  { id: 'hamb_lentejas', n: 'Hamburguesas caseras de lentejas con ensalada', m: 'ac', tag: 'legumbre', ing: ['lentejas', 'avena', 'cebolla', 'lechuga', 'tomate'], p: 'Pisa lentejas cocidas con cebolla rehogada y avena. Forma medallones y cocina en sartén o al horno. Ensalada al lado.' },
+  { id: 'garbanzos_salteados', n: 'Garbanzos salteados con verduras y huevo', m: 'ac', tag: 'legumbre', ing: ['garbanzos', 'cebolla', 'morron', 'zapallito', 'huevo'], p: 'Saltea verduras, suma garbanzos cocidos y al final un huevo revuelto.' },
+  { id: 'pabellon', n: 'Caraotas negras con arroz integral y huevo', m: 'a', tag: 'legumbre', ing: ['porotos', 'arroz_integral', 'huevo', 'cebolla'], p: 'Un pabellón liviano: caraotas guisadas con cebolla y ajo, media taza de arroz integral y un huevo a la plancha (sin tajadas fritas).' },
+  { id: 'tarta_acelga', n: 'Tarta de acelga con masa integral', m: 'ac', ing: ['acelga', 'huevo', 'cebolla', 'harina_integral', 'queso'], p: 'Masa integral casera fina. Relleno: acelga hervida y escurrida, cebolla, 2 huevos y un poco de queso. Una porción + ensalada.' },
+  { id: 'omelette_acelga', n: 'Omelette de espinaca o acelga con ensalada', m: 'c', ing: ['huevo', 'acelga', 'tomate', 'lechuga'], p: '2 huevos con acelga o espinaca salteada. Ensalada de tomate y hojas verdes.' },
+  { id: 'revuelto_zapallitos', n: 'Revuelto de zapallitos con huevo y queso', m: 'c', ing: ['zapallito', 'huevo', 'queso', 'cebolla'], p: 'Zapallitos y cebolla rehogados, 2 huevos y un poco de queso. Rápido y liviano para la noche.' },
+  { id: 'berenjenas_horno', n: 'Berenjenas al horno con tomate y queso', m: 'c', ing: ['berenjena', 'queso', 'tomate', 'huevo'], p: 'Rodajas de berenjena al horno, tomate y queso arriba, gratinar. Acompaña con un huevo duro.' },
+];
+const MOMENTOS = [['d', 'Desayuno', '☕'], ['a', 'Almuerzo', '🍽️'], ['m', 'Merienda', '🍎'], ['c', 'Cena', '🌙']];
+
+// Ejercicios: valores por nivel (1 a 6). t: 'r' repeticiones, 's' segundos
+const RUTINAS = {
+  casa: {
+    n: 'Fuerza en casa', ic: '🏠', rondas: [1, 2, 2, 3, 3, 3], desc: 'Sin equipos. Una silla, una pared y una mochila con botellas de agua.',
+    ej: [
+      { n: 'Marcha en el lugar', t: 's', v: [60, 60, 90, 90, 120, 120], d: 'Para entrar en calor. Sube las rodillas a un ritmo cómodo y mueve los brazos.' },
+      { n: 'Sentadilla a la silla', t: 'r', v: [8, 10, 12, 12, 15, 15], d: 'Siéntate apenas en la silla y levántate sin usar las manos. Espalda derecha, peso en los talones.' },
+      { n: 'Flexiones de brazos', t: 'r', v: [8, 10, 12, 10, 12, 10], d: 'Niveles 1-3: contra la pared, manos a la altura del pecho. Niveles 4-5: apoyado en una mesa firme o la mesada. Nivel 6: en el piso con las rodillas apoyadas. Cuerpo recto, baja el pecho y empuja.' },
+      { n: 'Puente de glúteos', t: 'r', v: [10, 12, 15, 15, 18, 20], d: 'Acostado boca arriba, rodillas dobladas. Sube la cadera apretando glúteos, baja lento.' },
+      { n: 'Remo con mochila', t: 'r', v: [10, 12, 12, 15, 15, 15], d: 'Mochila con 2-4 botellas de agua. Inclinado con la espalda recta, lleva la mochila hacia el abdomen.' },
+      { n: 'Abdominales cortos', t: 'r', v: [8, 10, 12, 12, 15, 15], d: 'Boca arriba, rodillas dobladas. Despega solo los hombros del piso mirando al techo. Exhala al subir y no tires del cuello.' },
+      { n: 'Plancha con rodillas apoyadas', t: 's', v: [15, 20, 25, 30, 35, 40], d: 'Antebrazos y rodillas en el piso, cuerpo recto. Respira normal, no aguantes el aire.' },
+      { n: 'Elevación de talones', t: 'r', v: [12, 15, 15, 20, 20, 25], d: 'De pie, apoyado en una pared, sube a puntas de pie y baja lento.' },
+    ],
+  },
+  parque: {
+    n: 'Circuito en el parque', ic: '🌳', rondas: [1, 2, 2, 2, 3, 3], desc: 'Un banco, un escalón o cordón y espacio para caminar.',
+    ej: [
+      { n: 'Caminata rápida', t: 's', v: [300, 300, 300, 300, 300, 300], d: 'Para entrar en calor: 5 minutos a paso ligero.' },
+      { n: 'Flexiones apoyado en el banco', t: 'r', v: [6, 8, 10, 10, 12, 15], d: 'Manos en el respaldo o el asiento del banco, cuerpo recto. Cuanto más alto el apoyo, más fácil.' },
+      { n: 'Sentadillas', t: 'r', v: [8, 10, 12, 15, 15, 18], d: 'Pies al ancho de hombros, baja como para sentarte. Si cuesta, usa el banco de referencia.' },
+      { n: 'Subir y bajar escalón', t: 's', v: [30, 40, 45, 60, 60, 75], d: 'Sube y baja un escalón o cordón alternando piernas, ritmo constante.' },
+      { n: 'Estocadas apoyado en el banco', t: 'r', lado: true, v: [5, 6, 8, 8, 10, 12], d: 'Por pierna. Una mano en el banco para equilibrio, baja la rodilla de atrás sin tocar el piso.' },
+      { n: 'Plancha en el banco', t: 's', v: [15, 20, 25, 30, 35, 40], d: 'Manos en el asiento del banco, cuerpo recto como tabla.' },
+      { n: 'Rodillas al pecho sentado en el banco', t: 'r', v: [8, 10, 12, 12, 15, 15], d: 'Sentado en el borde del banco, manos atrás agarradas. Lleva las rodillas al pecho y baja lento. Exhala al subir.' },
+      { n: 'Caminata suave', t: 's', v: [180, 180, 240, 240, 300, 300], d: 'Para bajar pulsaciones. Respira profundo.' },
+    ],
+  },
+  core: {
+    n: 'Abdomen y zona media', ic: '🎯', rondas: [1, 2, 2, 2, 3, 3], desc: 'Abdominales que cuidan la espalda. Respira siempre: nunca aguantes el aire haciendo fuerza.',
+    ej: [
+      { n: 'Respiración con abdomen', t: 's', v: [30, 30, 30, 30, 30, 30], d: 'Boca arriba, rodillas dobladas, mano en la panza. Al exhalar, lleva el ombligo suave hacia la espalda.' },
+      { n: 'Abdominales cortos', t: 'r', v: [8, 10, 12, 15, 15, 20], d: 'Boca arriba, rodillas dobladas. Despega solo los hombros del piso mirando al techo. Exhala al subir y no tires del cuello.' },
+      { n: 'Bicho muerto', t: 'r', lado: true, v: [5, 6, 8, 8, 10, 12], d: 'Boca arriba, brazos al techo y rodillas dobladas en el aire. Estira un brazo y la pierna contraria sin despegar la espalda baja del piso. Alterna.' },
+      { n: 'Perro de caza', t: 'r', lado: true, v: [5, 6, 8, 8, 10, 12], d: 'En cuatro patas. Estira un brazo y la pierna contraria, sostén 2 segundos y vuelve. Espalda quieta como una mesa.' },
+      { n: 'Plancha lateral con rodilla apoyada', t: 's', v: [10, 15, 15, 20, 25, 30], d: 'De costado, apoyado en el antebrazo y la rodilla. Sube la cadera y sostén. Cambia de lado en la siguiente ronda.' },
+      { n: 'Plancha con rodillas apoyadas', t: 's', v: [15, 20, 25, 30, 35, 40], d: 'Antebrazos y rodillas en el piso, cuerpo recto. Respira normal.' },
+    ],
+  },
+  estirar: {
+    n: 'Estiramientos', ic: '🧘', rondas: [1, 1, 1, 1, 1, 1], desc: '5 minutos. Ideal después de caminar o antes de dormir.',
+    ej: [
+      { n: 'Cuello', t: 's', v: [30, 30, 30, 30, 30, 30], d: 'Lleva la oreja hacia el hombro, suave, de un lado y del otro.' },
+      { n: 'Hombros y pecho', t: 's', v: [30, 30, 30, 30, 30, 30], d: 'Entrelaza las manos detrás de la espalda y abre el pecho.' },
+      { n: 'Isquiotibiales', t: 's', v: [40, 40, 40, 40, 40, 40], d: 'Pie sobre un escalón bajo, pierna estirada, inclínate apenas hacia adelante. Cambia de pierna a la mitad.' },
+      { n: 'Cuádriceps', t: 's', v: [40, 40, 40, 40, 40, 40], d: 'Apoyado en la pared, toma el pie por detrás. Cambia a la mitad.' },
+      { n: 'Pantorrillas', t: 's', v: [40, 40, 40, 40, 40, 40], d: 'Manos en la pared, una pierna atrás con el talón apoyado. Cambia a la mitad.' },
+      { n: 'Espalda (postura del niño)', t: 's', v: [45, 45, 45, 45, 45, 45], d: 'De rodillas, siéntate sobre los talones y estira los brazos al frente en el piso. Respira lento.' },
+    ],
+  },
+};
+const CAMINATA_MIN = [20, 25, 30, 30, 35, 40];
+const CAMINATA_TXT = [
+  'Paso cómodo, que puedas conversar.',
+  'Paso cómodo, un poco más de tiempo.',
+  'Paso ligero: puedes hablar pero no cantar.',
+  'Intervalos: 1 minuto rápido, 2 minutos normal.',
+  'Intervalos: 2 minutos rápido, 2 minutos normal.',
+  'Intervalos: 2 minutos rápido, 1 minuto normal.',
+];
+
+// Guía de meditación (frases que van apareciendo)
+const GUIA_MEDITACION = [
+  'Siéntate cómodo. Apoya los pies en el piso y deja las manos sueltas.',
+  'Cierra los ojos o baja la mirada. No hay nada que lograr, solo estar.',
+  'Nota el aire que entra por la nariz… y el aire que sale.',
+  'Si aparece un pensamiento, está bien. Míralo pasar como una nube y vuelve a la respiración.',
+  'Recorre el cuerpo: frente, mandíbula, hombros. Suelta lo que esté apretado.',
+  'Siente el peso del cuerpo sobre la silla. Estás sostenido.',
+  'Si aparece una sensación en el cuerpo, obsérvala con curiosidad, sin pelear con ella. Las sensaciones vienen y van.',
+  'Vuelve a la respiración. Inhala… exhala un poco más largo.',
+  'Este momento es tuyo. No tienes que resolver nada ahora.',
+  'Agradece algo pequeño de hoy.',
+];
+
+// Frases del día (propias)
+const FRASES = [
+  'Un paso chico, todos los días, le gana a uno grande que nunca llega.',
+  'Un pensamiento no es un diagnóstico. Respira y vuelve al presente.',
+  'Hoy no hace falta hacerlo perfecto, alcanza con hacerlo.',
+  'Cuidarte también es cuidar a tu familia.',
+  'La calma también se entrena, como un músculo.',
+  'Lo que hiciste ayer cuenta. Lo de hoy, también.',
+  'Si hoy cuesta, haz la versión corta. Igual suma.',
+  'Tu cuerpo ya pasó por estudios que salieron bien. Puedes confiar un poco más en él.',
+  'Primero respirar, después pensar.',
+  'Disfrutar el presente también es parte de sanar.',
+];
+
+// Valores de laboratorio (referencias generales para adultos; tu médico es quien interpreta)
+const LAB = [
+  { k: 'ct', n: 'Colesterol total', u: 'mg/dL', ok: (v) => v < 200, medio: (v) => v < 240, ref: '< 200' },
+  { k: 'hdl', n: 'HDL (bueno)', u: 'mg/dL', ok: (v) => v >= 40, medio: () => false, ref: '≥ 40' },
+  { k: 'ldl', n: 'LDL', u: 'mg/dL', ok: (v) => v < 130, medio: (v) => v < 160, ref: '< 130' },
+  { k: 'tg', n: 'Triglicéridos', u: 'mg/dL', ok: (v) => v < 150, medio: (v) => v < 200, ref: '< 150' },
+  { k: 'glu', n: 'Glucosa en ayunas', u: 'mg/dL', ok: (v) => v >= 70 && v < 100, medio: (v) => v < 126, ref: '70 – 99' },
+  { k: 'hba1c', n: 'Hemoglobina glicosilada', u: '%', ok: (v) => v < 5.7, medio: (v) => v < 6.5, ref: '< 5,7' },
+  { k: 'crea', n: 'Creatinina', u: 'mg/dL', ok: (v) => v >= 0.7 && v <= 1.3, medio: (v) => v <= 1.5, ref: '0,7 – 1,3' },
+  { k: 'tsh', n: 'TSH', u: 'µUI/mL', ok: (v) => v >= 0.4 && v <= 4, medio: () => false, ref: '0,4 – 4,0' },
+  { k: 'au', n: 'Ácido úrico', u: 'mg/dL', ok: (v) => v <= 7, medio: (v) => v <= 8, ref: '≤ 7' },
+];
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+function vistaLogin(modo = 'login') {
+  $('#nav').classList.add('oculto');
+  const reg = modo === 'registro';
+  $('#app').innerHTML = `
+  <div class="login">
+    <div class="logo">🌱</div>
+    <h1 class="centro">Vamos Pa' Arriba</h1>
+    <p class="centro mut">Cuerpo, mente y espíritu, un día a la vez.</p>
+    <div class="card mt">
+      ${reg ? `<label class="f">Tu nombre</label><input class="i" id="l-nombre" autocomplete="name">` : ''}
+      <label class="f">Email</label><input class="i" id="l-email" type="email" autocomplete="email">
+      <label class="f">Contraseña</label><input class="i" id="l-pass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}">
+      ${reg ? `<label class="f">Código de invitación</label><input class="i" id="l-codigo">` : ''}
+      <button class="btn full mt" id="l-ok">${reg ? 'Crear cuenta' : 'Entrar'}</button>
+      <p class="centro mt mb0"><a href="#" id="l-cambio" style="color:var(--verde)">${reg ? 'Ya tengo cuenta' : 'Crear una cuenta nueva'}</a></p>
+    </div>
+  </div>`;
+  $('#l-cambio').onclick = (e) => { e.preventDefault(); vistaLogin(reg ? 'login' : 'registro'); };
+  $('#l-ok').onclick = async () => {
+    try {
+      const body = { email: $('#l-email').value, password: $('#l-pass').value };
+      if (reg) { body.nombre = $('#l-nombre').value; body.codigo = $('#l-codigo').value; }
+      const r = await api('POST', reg ? '/api/registro' : '/api/login', body);
+      S.token = r.token; localStorage.setItem('vpa_token', r.token);
+      S.usuario = r.usuario;
+      iniciar();
+    } catch (e) { toast(e.message); }
+  };
+}
+function salir() {
+  S.token = null; S.usuario = null; S.dias = {}; S.cache = {}; S.familia = null; S.miembros = [];
+  localStorage.removeItem('vpa_token');
+  vistaLogin();
+}
+
+/* =========================================================
+   NAVEGACIÓN
+   ========================================================= */
+function ir(vista) {
+  S.vista = vista;
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.v === vista));
+  window.scrollTo(0, 0);
+  render();
+}
+document.querySelectorAll('#nav button').forEach((b) => (b.onclick = () => ir(b.dataset.v)));
+
+async function render() {
+  const f = { hoy: vistaHoy, comida: vistaComida, mover: vistaMover, calma: vistaCalma, salud: vistaSalud, ajustes: vistaAjustes }[S.vista];
+  try { await f(); } catch (e) { console.error(e); $('#app').innerHTML = `<div class="card">No se pudo cargar: ${esc(e.message)}</div>`; }
+}
+function encabezado(titulo, sub) {
+  return `<div class="top"><div><h1 class="mb0">${titulo}</h1>${sub ? `<small>${sub}</small>` : ''}</div>
+  <button class="ic" onclick="ir('ajustes')" aria-label="Ajustes">⚙️</button></div>`;
+}
+
+/* =========================================================
+   MODAL Y FORMULARIOS GENÉRICOS
+   ========================================================= */
+function modal(html, alAbrir) {
+  const o = document.createElement('div');
+  o.className = 'overlay';
+  o.innerHTML = `<div class="modal">${html}</div>`;
+  o.onclick = (e) => { if (e.target === o) o.remove(); };
+  document.body.appendChild(o);
+  if (alAbrir) alAbrir(o);
+  return o;
+}
+
+// campos: [{k, l, t: text|number|date|time|textarea|select|check|escala, op:[...], ph}]
+function htmlCampos(campos, datos = {}) {
+  return campos.map((c) => {
+    const v = datos[c.k] ?? c.def ?? '';
+    const id = 'c_' + c.k;
+    if (c.t === 'titulo') return `<h3 class="mt">${c.l}</h3>`;
+    if (c.t === 'textarea') return `<label class="f">${c.l}</label><textarea class="i" id="${id}" placeholder="${esc(c.ph || '')}">${esc(v)}</textarea>`;
+    if (c.t === 'select') return `<label class="f">${c.l}</label><select class="i" id="${id}">${c.op.map((o) => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+    if (c.t === 'check') return `<label class="check ${v ? 'ok' : ''}" style="border:none" onclick="this.classList.toggle('ok')" data-k="${c.k}" id="${id}"><span class="caja">✓</span><span>${c.l}</span></label>`;
+    if (c.t === 'escala') return `<label class="f">${c.l}</label><div class="fila" id="${id}" data-v="${esc(v)}">${c.op.map((o, i) => `<button type="button" class="emo ${String(v) === String(i + 1) ? 'on' : ''}" data-i="${i + 1}" onclick="this.parentNode.dataset.v=this.dataset.i;[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this))">${o}</button>`).join('')}</div>`;
+    const step = c.t === 'number' ? 'step="any" inputmode="decimal"' : '';
+    return `<label class="f">${c.l}</label><input class="i" id="${id}" type="${c.t || 'text'}" ${step} value="${esc(v)}" placeholder="${esc(c.ph || '')}">`;
+  }).join('');
+}
+function leerCampos(campos, raiz) {
+  const out = {};
+  campos.forEach((c) => {
+    if (c.t === 'titulo') return;
+    const el = $('#c_' + c.k, raiz);
+    if (!el) return;
+    if (c.t === 'check') out[c.k] = el.classList.contains('ok');
+    else if (c.t === 'escala') out[c.k] = el.dataset.v ? Number(el.dataset.v) : null;
+    else if (c.t === 'number') out[c.k] = el.value === '' ? null : Number(String(el.value).replace(',', '.'));
+    else out[c.k] = el.value.trim();
+  });
+  return out;
+}
+
+// Formulario de registro (crear o editar)
+function formRegistro(tipo, titulo, campos, existente, alGuardar) {
+  const datos = existente ? { ...existente.datos, fecha: existente.fecha } : { fecha: hoyStr() };
+  const todos = [{ k: 'fecha', l: 'Fecha', t: 'date' }, ...campos];
+  modal(`
+    <div class="fila entre"><h2 class="mb0">${titulo}</h2><button class="btn chico borde" data-x>✕</button></div>
+    ${htmlCampos(todos, datos)}
+    <button class="btn full mt" data-ok>Guardar</button>
+    ${existente ? `<button class="btn full mt borde" data-del style="color:var(--rojo)">Borrar</button>` : ''}
+  `, (o) => {
+    $('[data-x]', o).onclick = () => o.remove();
+    $('[data-ok]', o).onclick = async () => {
+      const v = leerCampos(todos, o);
+      const fecha = v.fecha || hoyStr(); delete v.fecha;
+      try {
+        if (existente) await editarRegistro(existente.id, tipo, fecha, v);
+        else await nuevoRegistro(tipo, fecha, v);
+        o.remove(); toast('Guardado ✓');
+        alGuardar && alGuardar(fecha, v);
+        render();
+      } catch (e) { toast(e.message); }
+    };
+    if (existente) $('[data-del]', o).onclick = async () => {
+      if (!confirm('¿Borrar este registro?')) return;
+      await borrarRegistro(existente.id, tipo); o.remove(); render();
+    };
+  });
+}
+
+/* =========================================================
+   HOY
+   ========================================================= */
+const HABITOS = [
+  ['caminata', '🚶', 'Caminata'],
+  ['fuerza', '💪', 'Ejercicio de fuerza o estiramiento'],
+  ['meditacion', '🧘', 'Meditación o respiración'],
+  ['oracion_m', '🙏', 'Oración de la mañana'],
+  ['oracion_n', '🌙', 'Oración de la noche'],
+  ['dormir', '😴', 'Rutina antes de dormir'],
+];
+const ANIMOS = ['😣', '😕', '😐', '🙂', '😄'];
+
+function puntosDia(d) {
+  if (!d) return 0;
+  const h = d.h || {};
+  let n = Object.values(h).filter(Boolean).length;
+  n += Object.values(d.comidas || {}).filter(Boolean).length >= 3 ? 1 : 0;
+  n += (d.agua || 0) >= 6 ? 1 : 0;
+  return n;
+}
+function racha() {
+  let r = 0, f = hoyStr();
+  if (puntosDia(S.dias[f]) < 3) f = sumarDias(f, -1);
+  while (puntosDia(S.dias[f]) >= 3) { r++; f = sumarDias(f, -1); }
+  return r;
+}
+function planDeHoy(fecha = hoyStr()) {
+  const p = fuente().plan;
+  if (!p || !p.dias || !p.inicio) return null;
+  const i = difDias(fecha, p.inicio);
+  if (i < 0 || i > 6) return null;
+  return p.dias[i];
+}
+const receta = (id) => RECETAS.find((r) => r.id === id);
+
+async function vistaHoy() {
+  const hoy = hoyStr();
+  await Promise.all([cargarDias(sumarDias(hoy, -60), hoy), cargarFamilia()]);
+  const d = S.dias[hoy] || {};
+  const h = d.h || {};
+  const hechos = HABITOS.filter(([k]) => h[k]).length;
+  const nombre = (S.usuario.nombre || '').split(' ')[0];
+  const frase = FRASES[(parseF(hoy).getDate() + parseF(hoy).getMonth()) % FRASES.length];
+  const plan = planDeHoy();
+  const r = racha();
+  const semana = [...Array(7)].map((_, i) => sumarDias(hoy, i - 6));
+
+  $('#app').innerHTML = `
+  ${encabezado('Hola, ' + esc(nombre) + ' 👋', fechaLarga(hoy))}
+  <div class="card verde">
+    <p class="mb0" style="opacity:.85;font-size:.9rem">Frase del día</p>
+    <p style="font-size:1.08rem;font-weight:600">${esc(frase)}</p>
+    <div class="fila entre mt">
+      <div><div class="big">${r}</div><small style="color:#fff;opacity:.85">${r === 1 ? 'día seguido' : 'días seguidos'}</small></div>
+      <div style="flex:1;max-width:60%">
+        <small style="color:#fff;opacity:.85">Hábitos de hoy: ${hechos} de ${HABITOS.length}</small>
+        <div class="prog mt"><div style="width:${(hechos / HABITOS.length) * 100}%"></div></div>
+      </div>
+    </div>
+    <div class="semana">${semana.map((f) => {
+      const p = puntosDia(S.dias[f]);
+      const cl = p >= 5 ? 'p3' : p >= 3 ? 'p2' : p >= 1 ? 'p1' : '';
+      return `<div style="color:#fff;opacity:.9">${DIAS_C[parseF(f).getDay()]}<div class="pt ${cl} ${f === hoy ? 'hoy' : ''}">${p || ''}</div></div>`;
+    }).join('')}</div>
+  </div>
+
+  <button class="btn full sec" onclick="rescate()" style="margin-bottom:12px">🫶 Siento que empieza la ansiedad</button>
+
+  <div class="card">
+    <h2>Hábitos</h2>
+    ${HABITOS.map(([k, ic, txt]) => `<div class="check ${h[k] ? 'ok' : ''}" data-h="${k}"><span class="caja">✓</span><span class="txt">${ic} ${txt}</span></div>`).join('')}
+  </div>
+
+  <div class="card">
+    <div class="fila entre"><h2 class="mb0">Comidas de hoy</h2><button class="btn chico sec" onclick="ir('comida')">Ver plan</button></div>
+    ${plan ? MOMENTOS.map(([m, nom, ic]) => {
+      const rc = receta(plan[m]); if (!rc) return '';
+      const ok = (d.comidas || {})[m];
+      return `<div class="check ${ok ? 'ok' : ''}" data-c="${m}"><span class="caja">✓</span><span class="txt"><small>${ic} ${nom}</small><br>${esc(rc.n)}</span></div>`;
+    }).join('') : `<p class="mut">Todavía no tienes plan esta semana.</p><button class="btn full" onclick="ir('comida')">Armar mi plan de comidas</button>`}
+  </div>
+
+  <div class="card">
+    <h2>Agua <small>(${d.agua || 0} vasos)</small></h2>
+    <div class="agua">${[...Array(8)].map((_, i) => `<button data-a="${i + 1}" class="${i < (d.agua || 0) ? 'on' : ''}">💧</button>`).join('')}</div>
+  </div>
+
+  <div class="card">
+    <h2>¿Cómo te sientes hoy?</h2>
+    <div class="fila entre">${ANIMOS.map((e, i) => `<button class="emo ${d.animo === i + 1 ? 'on' : ''}" data-an="${i + 1}">${e}</button>`).join('')}</div>
+  </div>`;
+
+  document.querySelectorAll('[data-h]').forEach((el) => (el.onclick = async () => {
+    const k = el.dataset.h; el.classList.toggle('ok');
+    await marcarHabito(k, el.classList.contains('ok')); vistaHoy();
+  }));
+  document.querySelectorAll('[data-c]').forEach((el) => (el.onclick = async () => {
+    el.classList.toggle('ok');
+    await marcarDia(hoy, { comidas: { ...(d.comidas || {}), [el.dataset.c]: el.classList.contains('ok') } }); vistaHoy();
+  }));
+  document.querySelectorAll('[data-a]').forEach((el) => (el.onclick = async () => {
+    const n = Number(el.dataset.a);
+    await marcarDia(hoy, { agua: (d.agua || 0) === n ? n - 1 : n }); vistaHoy();
+  }));
+  document.querySelectorAll('[data-an]').forEach((el) => (el.onclick = async () => {
+    await marcarDia(hoy, { animo: Number(el.dataset.an) }); vistaHoy();
+  }));
+}
+
+/* =========================================================
+   COMIDA
+   ========================================================= */
+// ---- Familia: si el usuario está en una, el plan y las compras son compartidos ----
+async function cargarFamilia() {
+  const r = await api('GET', '/api/familia');
+  S.familia = r.familia; S.miembros = r.miembros || [];
+}
+const fuente = () => (S.familia ? S.familia.datos || {} : perfil());
+async function guardarComida(cambios) {
+  if (S.familia) { const r = await api('PATCH', '/api/familia', cambios); S.familia = r.familia; S.miembros = r.miembros; }
+  else await guardarPerfil(cambios);
+}
+const personas = () => (S.familia ? Number(S.familia.datos.personas) || S.miembros.length || 1 : 1);
+function misExcluidos() { return new Set(perfil().excluye || []); }
+// Lo que no come NADIE de la casa: mis exclusiones + las de cada miembro + las de quienes no tienen cuenta
+function excluidos() {
+  const ex = misExcluidos();
+  if (S.familia) {
+    S.miembros.filter((m) => m.id !== S.usuario.id).forEach((m) => (m.excluye || []).forEach((k) => ex.add(k)));
+    (S.familia.datos.excluyeExtra || []).forEach((k) => ex.add(k));
+  }
+  return ex;
+}
+function recetasPermitidas() {
+  const ex = excluidos();
+  const no = new Set([...(perfil().noReceta || []), ...(S.familia ? S.familia.datos.noReceta || [] : [])]);
+  return RECETAS.filter((r) => !r.ing.some((i) => ex.has(i)) && !no.has(r.id));
+}
+function chipsExclusion(set, attr) {
+  return `<p class="mut mb0">Grupos completos:</p>` +
+    Object.entries(GRUPOS).map(([g, ks]) => `<span class="chip ${ks.every((k) => set.has(k)) ? 'no' : ''}" data-${attr}g="${esc(g)}">${esc(g)}</span>`).join('') +
+    `<p class="mut mb0 mt">Alimentos sueltos:</p>` +
+    Object.entries(ING).sort((a, b) => a[1][0].localeCompare(b[1][0])).map(([k, [n]]) => `<span class="chip ${set.has(k) ? 'no' : ''}" data-${attr}i="${k}">${esc(n)}</span>`).join('');
+}
+function lunesDe(fecha) {
+  const d = parseF(fecha); const dif = (d.getDay() + 6) % 7;
+  return sumarDias(fecha, -dif);
+}
+
+function generarPlan(inicio) {
+  const ok = recetasPermitidas();
+  const de = (m) => ok.filter((r) => r.m.includes(m));
+  const dias = [];
+  const usados = {};
+  const elegir = (m, evitar, preferTag) => {
+    let c = de(m).filter((r) => !evitar.includes(r.id));
+    if (preferTag) { const t = c.filter((r) => r.tag === preferTag); if (t.length) c = t; }
+    if (!c.length) c = de(m);
+    if (!c.length) return null;
+    // menos usadas primero
+    const min = Math.min(...c.map((r) => usados[r.id] || 0));
+    const r = azar(c.filter((x) => (usados[x.id] || 0) === min));
+    usados[r.id] = (usados[r.id] || 0) + 1;
+    return r.id;
+  };
+  for (let i = 0; i < 7; i++) {
+    const prev = dias[i - 1] || {};
+    const ev = Object.values(prev);
+    const dia = {};
+    dia.d = elegir('d', ev);
+    dia.m = elegir('m', [...ev, dia.d]);
+    // pescado días 1 y 4; legumbres días 2 y 5
+    const tagA = i === 0 || i === 3 ? 'pescado' : i === 1 || i === 4 ? 'legumbre' : null;
+    dia.a = elegir('a', ev, tagA);
+    dia.c = elegir('c', [...ev, dia.a]);
+    dias.push(dia);
+  }
+  return { inicio, dias, creado: hoyStr() };
+}
+
+async function vistaComida() {
+  const sub = S.sub.comida || 'plan';
+  const tabs = [['plan', '📅 Plan semanal'], ['compras', '🛒 Compras'], ['excluir', '🚫 Lo que no como'], ['familia', '👨‍👩‍👧 Familia'], ['guia', '💡 Guía']];
+  let cuerpo = '';
+  await cargarFamilia();
+  const p = perfil();
+  const F = fuente();
+
+  if (sub === 'plan') {
+    const hoy = hoyStr();
+    const plan = F.plan;
+    const vigente = plan && difDias(hoy, plan.inicio) >= 0 && difDias(hoy, plan.inicio) <= 6;
+    if (!(p.excluye && p.excluye.length) && !p.excluyeOk) {
+      cuerpo += `<div class="card suave"><p class="mb0">Antes de armar el plan, marca <b>lo que no comes</b> para que no aparezca.</p><button class="btn full mt" onclick="S.sub.comida='excluir';render()">Marcar lo que no como</button></div>`;
+    }
+    if (!vigente) {
+      cuerpo += `<div class="card"><h2>Plan de los próximos 7 días</h2><p class="mut">Comidas simples, caseras y económicas, pensadas para bajar triglicéridos y colesterol.</p>
+      <button class="btn full" id="gen">✨ Armar mi plan de 7 días</button></div>`;
+    } else {
+      if (S.familia) cuerpo += `<div class="card suave" style="padding:10px 14px"><small>👨‍👩‍👧 Plan compartido de <b>${esc(S.familia.nombre)}</b> · ${personas()} personas · sin lo que no come nadie de la casa</small></div>`;
+      cuerpo += `<div class="fila entre" style="margin-bottom:8px"><small>Del ${fechaCorta(plan.inicio)} al ${fechaCorta(sumarDias(plan.inicio, 6))}</small><button class="btn chico borde" id="gen">🔄 Rehacer semana</button></div>`;
+      plan.dias.forEach((dia, i) => {
+        const f = sumarDias(plan.inicio, i);
+        const esHoy = f === hoy;
+        cuerpo += `<div class="card" ${esHoy ? 'style="border:2px solid var(--verde)"' : ''}>
+          <h3>${DIAS[parseF(f).getDay()]} ${parseF(f).getDate()} ${esHoy ? '<span class="badge">Hoy</span>' : ''}</h3>
+          ${MOMENTOS.map(([m, nom, ic]) => {
+            const r = receta(dia[m]);
+            return `<div class="comida"><div style="flex:1"><div class="mom">${ic} ${nom}</div>
+              <div>${r ? esc(r.n) : '<span class="mut">—</span>'}</div></div>
+              <button class="btn chico borde" data-ver="${i}|${m}" title="Ver receta">👁</button>
+              <button class="btn chico borde" data-cam="${i}|${m}" title="Cambiar">🔄</button></div>`;
+          }).join('')}
+        </div>`;
+      });
+    }
+  }
+
+  if (sub === 'compras') {
+    const plan = F.plan;
+    if (!plan) cuerpo = `<div class="card"><p>Primero arma tu plan semanal.</p></div>`;
+    else {
+      const cuenta = {};
+      plan.dias.forEach((d) => Object.values(d).forEach((id) => { const r = receta(id); r && r.ing.forEach((i) => (cuenta[i] = (cuenta[i] || 0) + 1)); }));
+      const porCat = {};
+      Object.entries(cuenta).forEach(([k, n]) => { const [nom, cat] = ING[k] || [k, 'Otros']; (porCat[cat] = porCat[cat] || []).push([k, nom, n]); });
+      const tachados = new Set(F.comprado || []);
+      cuerpo = `<div class="card suave" style="padding:10px 14px"><small>🛒 Cantidades para <b>${personas()} ${personas() === 1 ? 'persona' : 'personas'}</b>${S.familia ? '' : ' (crea tu familia en la pestaña 👨‍👩‍👧 para compartir la lista)'}</small></div><p class="mut">El número indica en cuántas comidas de la semana aparece. Toca para tachar lo que ya tienes.</p>` +
+        Object.entries(porCat).sort().map(([cat, items]) => `<div class="card"><h3>${cat}</h3>${items.map(([k, nom, n]) =>
+          `<div class="check ${tachados.has(k) ? 'ok' : ''}" data-comp="${k}"><span class="caja">✓</span><span class="txt">${esc(nom)}</span><span class="badge">×${n}</span></div>`).join('')}</div>`).join('') +
+        `<button class="btn full borde" id="compartir-compras">📤 Compartir lista</button>`;
+    }
+  }
+
+  if (sub === 'excluir') {
+    const ex = misExcluidos();
+    cuerpo = `<div class="card"><h2>Lo que no como yo</h2><p class="mut">Toca lo que <b>no</b> comes (queda tachado).</p>${chipsExclusion(ex, '')}</div>
+      ${S.familia ? `<div class="card suave"><small>El plan de la familia evita lo que no come <b>ninguno</b> de ustedes. Lo de cada uno se marca en su propia cuenta; lo de quien no tiene cuenta, en la pestaña 👨‍👩‍👧 Familia.</small></div>` : ''}
+      <div class="card"><label class="f">Otras cosas que no como o notas</label><textarea class="i" id="ex-txt" placeholder="Ej.: no me gusta el hígado, la leche me cae pesada…">${esc(p.excluyeTxt || '')}</textarea>
+      <button class="btn full mt" id="ex-ok">Guardar</button></div>
+      <p class="mut centro">Quedan <b>${recetasPermitidas().length}</b> de ${RECETAS.length} recetas disponibles.</p>`;
+  }
+
+  if (sub === 'familia') {
+    if (!S.familia) {
+      cuerpo = `<div class="card"><h2>👨‍👩‍👧 Comer todos lo mismo</h2>
+        <p>Con una familia, el plan de comidas y la lista de compras son <b>uno solo para toda la casa</b>, y evita lo que no come ninguno.</p>
+        <label class="f">Nombre de la familia</label><input class="i" id="fam-nom" placeholder="Ej.: Familia Ochoa">
+        <button class="btn full mt" id="fam-crear">Crear mi familia</button></div>
+        <div class="card"><h2>¿Ya te invitaron?</h2><label class="f">Código de la familia</label><input class="i" id="fam-cod" placeholder="Ej.: K7M2QX" style="text-transform:uppercase">
+        <button class="btn full sec mt" id="fam-unir">Unirme</button></div>`;
+    } else {
+      const extra = new Set(F.excluyeExtra || []);
+      cuerpo = `<div class="card verde"><h2>${esc(S.familia.nombre)}</h2>
+        <p class="mb0">Código para invitar: <b style="font-size:1.3rem;letter-spacing:.12em">${esc(S.familia.codigo)}</b></p>
+        <small style="color:#fff;opacity:.85">Quien se cree una cuenta entra en Comida → Familia → "Unirme" y escribe este código.</small>
+        <button class="btn full mt" id="fam-comp">📤 Compartir invitación</button></div>
+        <div class="card"><h2>Integrantes con cuenta</h2>${S.miembros.map((m) => `<div class="lista-item"><b>${esc(m.nombre)}</b>${m.id === S.usuario.id ? ' <span class="badge">tú</span>' : ''}<br><small>${(m.excluye || []).length ? 'No come: ' + m.excluye.map((k) => (ING[k] || [k])[0]).join(', ') : 'Come de todo'}${m.excluyeTxt ? ' · ' + esc(m.excluyeTxt) : ''}</small></div>`).join('')}</div>
+        <div class="card"><h2>¿Cuántos comen en casa?</h2><p class="mut">Contando a quienes no tienen cuenta (por ejemplo los chicos). Se usa para la lista de compras.</p>
+          <div class="fila"><button class="btn sec chico" data-pers="-1">−</button><div class="big" style="min-width:60px;text-align:center">${personas()}</div><button class="btn sec chico" data-pers="1">+</button></div></div>
+        <div class="card"><h2>Lo que no come alguien sin cuenta</h2><p class="mut">Por ejemplo, tu hija. Lo que marques acá tampoco aparece en el plan.</p>
+          ${chipsExclusion(extra, 'x')}</div>
+        <button class="btn full borde" id="fam-salir" style="color:var(--rojo)">Salir de la familia</button>`;
+    }
+  }
+
+  if (sub === 'guia') {
+    cuerpo = `
+    <div class="card"><h2>🍽️ El plato</h2>
+      <p><b>Mitad</b> verduras · <b>un cuarto</b> proteína (pollo, pescado, huevo, legumbres, carne magra) · <b>un cuarto</b> cereal integral, papa o batata.</p></div>
+    <div class="card"><h2>⬇️ Para bajar triglicéridos</h2>
+      <p>Es el valor que más responde a los cambios de hábitos:</p>
+      <ul><li>Bebidas azucaradas y jugos: afuera. Agua, soda, mate, té o café sin azúcar.</li>
+      <li>Menos pan blanco, galletitas, facturas y harinas refinadas.</li>
+      <li>Dulces, postres y azúcar: ocasionales, no diarios.</li>
+      <li>Alcohol: lo menos posible (los sube mucho).</li>
+      <li>Pescado 2 veces por semana (la lata de sardinas o atún sirve y es barata).</li>
+      <li>Caminar casi todos los días.</li></ul></div>
+    <div class="card"><h2>🫀 Para el colesterol</h2>
+      <ul><li>Más fibra: avena, legumbres, verduras, frutas con cáscara.</li>
+      <li>Grasas buenas: aceite de oliva o canola crudo, maní, semillas.</li>
+      <li>Menos fiambres, embutidos, frituras, manteca y quesos duros.</li>
+      <li>Carnes magras y pollo sin piel.</li></ul></div>
+    <div class="card"><h2>💰 Comer bien sin gastar de más</h2>
+      <ul><li>Legumbres secas: proteína muy barata y rinden muchísimo.</li>
+      <li>Verdura y fruta de estación, en verdulería de barrio o feria.</li>
+      <li>Cocina doble y guarda para el día siguiente.</li>
+      <li>Huevo: proteína económica y versátil.</li></ul></div>
+    <div class="nota">Esta guía es general. Llévale tus análisis a tu médico de cabecera: él te dice si además hace falta medicación o un control especial.</div>`;
+  }
+
+  $('#app').innerHTML = `${encabezado('Comida', 'Simple, casera y rica')}
+    <div class="tabs">${tabs.map(([k, t]) => `<span class="chip ${sub === k ? 'on' : ''}" data-sub="${k}">${t}</span>`).join('')}</div>${cuerpo}`;
+
+  document.querySelectorAll('[data-sub]').forEach((el) => (el.onclick = () => { S.sub.comida = el.dataset.sub; render(); }));
+  const gen = $('#gen');
+  if (gen) gen.onclick = async () => {
+    if (recetasPermitidas().length < 8) return toast('Hay muy pocas recetas con tus exclusiones. Revisa "Lo que no como".');
+    await guardarComida({ plan: generarPlan(hoyStr()), comprado: [] }); toast('Plan listo ✓'); render();
+  };
+  document.querySelectorAll('[data-cam]').forEach((el) => (el.onclick = async () => {
+    const [i, m] = el.dataset.cam.split('|');
+    const plan = fuente().plan;
+    const actual = plan.dias[i][m];
+    const opc = recetasPermitidas().filter((r) => r.m.includes(m) && r.id !== actual);
+    if (!opc.length) return toast('No hay otra opción disponible');
+    elegirReceta(opc, async (id) => { plan.dias[i][m] = id; await guardarComida({ plan }); render(); });
+  }));
+  document.querySelectorAll('[data-ver]').forEach((el) => (el.onclick = () => {
+    const [i, m] = el.dataset.ver.split('|');
+    const r = receta(fuente().plan.dias[i][m]); if (!r) return;
+    modal(`<div class="fila entre"><h2 class="mb0">${esc(r.n)}</h2><button class="btn chico borde" data-x>✕</button></div>
+      <p class="mt">${esc(r.p)}</p><p class="mut"><b>Lleva:</b> ${r.ing.map((k) => (ING[k] || [k])[0]).join(', ')}</p>${personas() > 1 ? `<p class="mut">👨‍👩‍👧 Las cantidades son por persona: multiplica por ${personas()}.</p>` : ''}
+      <button class="btn full borde mt" data-nunca style="color:var(--rojo)">No me gusta, no me la propongas más</button>`, (o) => {
+      $('[data-x]', o).onclick = () => o.remove();
+      $('[data-nunca]', o).onclick = async () => {
+        if (S.familia) await guardarComida({ noReceta: [...(S.familia.datos.noReceta || []), r.id] });
+        else await guardarPerfil({ noReceta: [...(perfil().noReceta || []), r.id] });
+        o.remove(); toast('Listo, no aparece más. Cámbiala con 🔄');
+      };
+    });
+  }));
+  document.querySelectorAll('[data-comp]').forEach((el) => (el.onclick = async () => {
+    const set = new Set(fuente().comprado || []);
+    set.has(el.dataset.comp) ? set.delete(el.dataset.comp) : set.add(el.dataset.comp);
+    el.classList.toggle('ok');
+    await guardarComida({ comprado: [...set] });
+  }));
+  const comp = $('#compartir-compras');
+  if (comp) comp.onclick = () => {
+    const set = new Set(fuente().comprado || []);
+    const cuenta = {};
+    fuente().plan.dias.forEach((d) => Object.values(d).forEach((id) => { const r = receta(id); r && r.ing.forEach((i) => (cuenta[i] = 1)); }));
+    const txt = `🛒 Lista de compras (${personas()} ${personas() === 1 ? 'persona' : 'personas'})\n` + Object.keys(cuenta).filter((k) => !set.has(k)).map((k) => '• ' + ING[k][0]).join('\n');
+    compartir(txt);
+  };
+  document.querySelectorAll('[data-g]').forEach((el) => (el.onclick = () => {
+    const ks = GRUPOS[el.dataset.g]; const ex = misExcluidos();
+    const todos = ks.every((k) => ex.has(k));
+    ks.forEach((k) => (todos ? ex.delete(k) : ex.add(k)));
+    S.usuario.perfil.excluye = [...ex]; render();
+  }));
+  document.querySelectorAll('[data-i]').forEach((el) => (el.onclick = () => {
+    const ex = misExcluidos(); const k = el.dataset.i;
+    ex.has(k) ? ex.delete(k) : ex.add(k);
+    S.usuario.perfil.excluye = [...ex]; render();
+  }));
+  const fc = $('#fam-crear'); if (fc) fc.onclick = async () => {
+    const r = await api('POST', '/api/familia', { nombre: $('#fam-nom').value || 'Mi familia' });
+    S.familia = r.familia; S.miembros = r.miembros; toast('Familia creada ✓'); render();
+  };
+  const fu = $('#fam-unir'); if (fu) fu.onclick = async () => {
+    try { const r = await api('POST', '/api/familia/unirse', { codigo: $('#fam-cod').value }); S.familia = r.familia; S.miembros = r.miembros; toast('¡Bienvenido a ' + r.familia.nombre + '!'); render(); }
+    catch (e) { toast(e.message); }
+  };
+  const fco = $('#fam-comp'); if (fco) fco.onclick = () => compartir(`Te invito a "${S.familia.nombre}" en Vamos Pa' Arriba 🌱\nEntra a ${location.origin}, crea tu cuenta y en Comida → Familia escribe el código: ${S.familia.codigo}`);
+  const fs = $('#fam-salir'); if (fs) fs.onclick = async () => {
+    if (!confirm('¿Salir de la familia? Vas a volver a tener tu plan personal.')) return;
+    await api('POST', '/api/familia/salir'); S.familia = null; S.miembros = []; render();
+  };
+  document.querySelectorAll('[data-pers]').forEach((el) => (el.onclick = async () => {
+    await guardarComida({ personas: Math.max(1, Math.min(15, personas() + Number(el.dataset.pers))) }); render();
+  }));
+  const toggleExtra = async (ks) => {
+    const ex = new Set(S.familia.datos.excluyeExtra || []);
+    const todos = ks.every((k) => ex.has(k));
+    ks.forEach((k) => (todos ? ex.delete(k) : ex.add(k)));
+    await guardarComida({ excluyeExtra: [...ex] }); render();
+  };
+  document.querySelectorAll('[data-xg]').forEach((el) => (el.onclick = () => toggleExtra(GRUPOS[el.dataset.xg])));
+  document.querySelectorAll('[data-xi]').forEach((el) => (el.onclick = () => toggleExtra([el.dataset.xi])));
+  const exOk = $('#ex-ok');
+  if (exOk) exOk.onclick = async () => {
+    await guardarPerfil({ excluye: perfil().excluye || [], excluyeTxt: $('#ex-txt').value, excluyeOk: true });
+    toast('Guardado ✓'); S.sub.comida = 'plan'; render();
+  };
+}
+function elegirReceta(opc, cb) {
+  modal(`<div class="fila entre"><h2 class="mb0">Elegir otra opción</h2><button class="btn chico borde" data-x>✕</button></div>
+    ${opc.map((r) => `<div class="lista-item" data-r="${r.id}" style="cursor:pointer"><b>${esc(r.n)}</b><br><small>${esc(r.p.slice(0, 90))}…</small></div>`).join('')}`, (o) => {
+    $('[data-x]', o).onclick = () => o.remove();
+    o.querySelectorAll('[data-r]').forEach((el) => (el.onclick = () => { o.remove(); cb(el.dataset.r); }));
+  });
+}
+async function compartir(txt) {
+  try { if (navigator.share) return await navigator.share({ text: txt }); } catch (e) { return; }
+  try { await navigator.clipboard.writeText(txt); toast('Copiado al portapapeles'); } catch (e) { toast('No se pudo copiar'); }
+}
+
+/* =========================================================
+   MOVER
+   ========================================================= */
+async function vistaMover() {
+  const p = perfil();
+  const nivel = p.nivel || 1;
+  const ej = await registros('ejercicio', true);
+  const hoy = hoyStr();
+  const semana = ej.filter((r) => difDias(hoy, r.fecha) < 7);
+  const minSem = semana.reduce((a, r) => a + (Number(r.datos.minutos) || 0), 0);
+  const enNivel = ej.filter((r) => (r.datos.nivel || 1) === nivel && r.datos.sensacion === 'Bien').length;
+  const sugerirSubir = nivel < 6 && enNivel >= 6;
+
+  $('#app').innerHTML = `${encabezado('Mover el cuerpo', 'Sin gimnasio, a tu ritmo')}
+  <div class="card verde">
+    <div class="fila entre"><div><small style="color:#fff;opacity:.85">Esta semana</small><div class="big">${minSem} min</div></div>
+    <div style="text-align:right"><small style="color:#fff;opacity:.85">Tu nivel</small><div class="big">${nivel}<small style="color:#fff;font-size:1rem">/6</small></div></div></div>
+    <small style="color:#fff;opacity:.85">Meta inicial: 150 minutos por semana, sumando de a poco.</small>
+    <div class="prog mt"><div style="width:${Math.min(100, (minSem / 150) * 100)}%"></div></div>
+  </div>
+  ${sugerirSubir ? `<div class="card suave"><p class="mb0">Hiciste ${enNivel} sesiones en nivel ${nivel} sintiéndote bien. ¿Subimos a nivel ${nivel + 1}?</p><button class="btn full mt" id="subir">Subir a nivel ${nivel + 1}</button></div>` : ''}
+
+  <div class="card">
+    <div class="fila entre"><h2 class="mb0">🚶 Caminata</h2><span class="badge">${CAMINATA_MIN[nivel - 1]} min</span></div>
+    <p class="mut">${CAMINATA_TXT[nivel - 1]}</p>
+    <div class="grid2"><button class="btn" id="cam-ya">▶ Empezar</button><button class="btn sec" id="cam-reg">Ya caminé</button></div>
+  </div>
+
+  ${Object.entries(RUTINAS).map(([k, r]) => `<div class="card">
+    <div class="fila entre"><h2 class="mb0">${r.ic} ${r.n}</h2><span class="badge">${r.rondas[nivel - 1]} ${r.rondas[nivel - 1] === 1 ? 'ronda' : 'rondas'}</span></div>
+    <p class="mut">${r.desc}</p>
+    <details style="margin-bottom:10px"><summary style="cursor:pointer;color:var(--verde);font-weight:600">Ver los ${r.ej.length} ejercicios</summary>
+      ${r.ej.map((e, i) => `<div class="lista-item"><div class="fila entre"><b>${i + 1}. ${esc(e.n)}</b><span class="badge">${e.t === 's' ? mmss(e.v[nivel - 1]) : e.v[nivel - 1] + (e.lado ? ' x lado' : ' rep.')}</span></div><small>${esc(e.d)}</small></div>`).join('')}
+      ${r.rondas[nivel - 1] > 1 ? `<p class="mut mt mb0"><small>Haz la lista completa ${r.rondas[nivel - 1]} veces, con 30 s de descanso entre ejercicios y 1 min entre rondas.</small></p>` : ''}
+    </details>
+    <button class="btn full" data-rut="${k}">▶ Empezar</button></div>`).join('')}
+
+  <div class="card"><h2>📆 Sugerencia semanal</h2>
+    <p>Caminata 5 días · Fuerza (casa o parque) 2 días no seguidos · Abdomen 2 días · Estiramientos cuando quieras.</p>
+    <div class="nota">Si sientes dolor en el pecho, falta de aire fuera de lo normal, mareo o palpitaciones que no ceden al parar: detente y consulta. Si aparece alguna molestia o dolor (por ejemplo en el testículo o en una articulación), baja la intensidad y anótalo para comentarlo con tu médico.</div>
+  </div>
+
+  <div class="card"><h2>Historial</h2>
+    ${ej.slice(0, 15).map((r) => `<div class="lista-item fila entre"><div><b>${esc(r.datos.rutina || '')}</b><br><small>${fechaCorta(r.fecha)} · ${r.datos.minutos || '?'} min · nivel ${r.datos.nivel || 1}${r.datos.molestia ? ' · ⚠️ molestia' : ''}</small></div><span>${{ Bien: '🙂', Cansado: '😮‍💨', 'Me costó': '😣' }[r.datos.sensacion] || ''}</span></div>`).join('') || '<p class="mut">Todavía no hay sesiones.</p>'}
+  </div>
+  <div class="fila wrap"><span class="mut">Cambiar nivel manualmente:</span>${[1, 2, 3, 4, 5, 6].map((n) => `<span class="chip ${n === nivel ? 'on' : ''}" data-niv="${n}">${n}</span>`).join('')}</div>`;
+
+  const sub = $('#subir'); if (sub) sub.onclick = async () => { await guardarPerfil({ nivel: nivel + 1 }); toast('¡Nivel ' + (nivel + 1) + '! 💪'); render(); };
+  document.querySelectorAll('[data-niv]').forEach((el) => (el.onclick = async () => { await guardarPerfil({ nivel: Number(el.dataset.niv) }); render(); }));
+  $('#cam-ya').onclick = () => caminata(nivel);
+  $('#cam-reg').onclick = () => finSesion('Caminata', nivel, CAMINATA_MIN[nivel - 1], 'caminata', true);
+  document.querySelectorAll('[data-rut]').forEach((el) => (el.onclick = () => reproducirRutina(el.dataset.rut, nivel)));
+}
+
+function caminata(nivel) {
+  const meta = CAMINATA_MIN[nivel - 1] * 60;
+  let t = 0, pausa = false;
+  const intervalos = nivel >= 4 ? [[60, 120], [120, 120], [120, 60]][nivel - 4] : null; // [rápido, normal]
+  const fs = document.createElement('div');
+  fs.className = 'full-screen';
+  document.body.appendChild(fs);
+  pantallaEncendida(true);
+  const fase = () => {
+    if (!intervalos) return '';
+    const ciclo = intervalos[0] + intervalos[1];
+    return (t % ciclo) < intervalos[0] ? '🏃 Rápido' : '🚶 Normal';
+  };
+  let ultFase = fase();
+  const pintar = () => {
+    fs.innerHTML = `<button class="cerrar" data-x>✕</button>
+      <h2>Caminata · nivel ${nivel}</h2>
+      ${intervalos ? `<div style="font-size:1.6rem;font-weight:700;margin-top:8px">${fase()}</div>` : `<p>${CAMINATA_TXT[nivel - 1]}</p>`}
+      <div class="reloj">${mmss(t)}</div>
+      <p style="opacity:.85">Meta: ${mmss(meta)}</p>
+      <div class="prog" style="width:80%;background:rgba(255,255,255,.25)"><div style="width:${Math.min(100, (t / meta) * 100)}%;background:#fff"></div></div>
+      <div class="fila mt" style="gap:10px"><button class="btn sec" data-p>${pausa ? '▶ Seguir' : '⏸ Pausa'}</button><button class="btn" data-fin>Terminar</button></div>`;
+    $('[data-x]', fs).onclick = cerrar;
+    $('[data-p]', fs).onclick = () => { pausa = !pausa; pintar(); };
+    $('[data-fin]', fs).onclick = () => { cerrar(); finSesion('Caminata', nivel, Math.max(1, Math.round(t / 60)), 'caminata'); };
+  };
+  const iv = setInterval(() => {
+    if (pausa) return;
+    t++;
+    const f = fase(); if (f !== ultFase) { ultFase = f; vibrar([200, 100, 200]); campana(f.includes('Rápido') ? 660 : 440); }
+    if (t === meta) { vibrar([300, 150, 300]); campana(); }
+    pintar();
+  }, 1000);
+  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  pintar();
+}
+
+function reproducirRutina(clave, nivel) {
+  const R = RUTINAS[clave];
+  const rondas = R.rondas[nivel - 1];
+  const pasos = [];
+  for (let r = 1; r <= rondas; r++) R.ej.forEach((e, i) => {
+    pasos.push({ ...e, val: e.v[nivel - 1], ronda: r });
+    const ultimo = r === rondas && i === R.ej.length - 1;
+    if (!ultimo && clave !== 'estirar') pasos.push({ descanso: true, val: i === R.ej.length - 1 ? 60 : 30 });
+  });
+  let idx = 0, t = 0, pausa = false;
+  const inicio = Date.now();
+  const fs = document.createElement('div');
+  fs.className = 'full-screen';
+  document.body.appendChild(fs);
+  pantallaEncendida(true);
+  const pintar = () => {
+    const p = pasos[idx];
+    const sig = pasos.slice(idx + 1).find((x) => !x.descanso);
+    const restante = p.t === 's' || p.descanso ? p.val - t : null;
+    fs.className = 'full-screen' + (p.descanso ? ' calmo' : '');
+    fs.innerHTML = `<button class="cerrar" data-x>✕</button>
+      <small style="opacity:.8">${R.n} · ${p.descanso ? 'Descanso' : `Ronda ${p.ronda} de ${rondas}`} · paso ${idx + 1}/${pasos.length}</small>
+      <h1 style="margin-top:14px">${p.descanso ? '😮‍💨 Descansa' : esc(p.n)}</h1>
+      ${p.descanso ? `<p>Respira tranquilo.${sig ? ' Lo que sigue: <b>' + esc(sig.n) + '</b>' : ''}</p>` : `<p class="paso-txt">${esc(p.d)}</p>`}
+      <div class="reloj">${restante !== null ? mmss(restante) : p.val + (p.lado ? ' x lado' : ' rep.')}</div>
+      <div class="fila" style="gap:10px">
+        ${restante !== null ? `<button class="btn sec" data-p>${pausa ? '▶' : '⏸'}</button>` : ''}
+        <button class="btn" data-ok>${restante !== null ? 'Saltar ⏭' : 'Listo ✓'}</button>
+      </div>`;
+    $('[data-x]', fs).onclick = () => { if (confirm('¿Salir de la rutina?')) cerrar(); };
+    const bp = $('[data-p]', fs); if (bp) bp.onclick = () => { pausa = !pausa; pintar(); };
+    $('[data-ok]', fs).onclick = siguiente;
+  };
+  const siguiente = () => {
+    idx++; t = 0;
+    if (idx >= pasos.length) {
+      cerrar(); campana(660);
+      finSesion(R.n, nivel, Math.max(1, Math.round((Date.now() - inicio) / 60000)), clave === 'estirar' ? 'fuerza' : 'fuerza');
+      return;
+    }
+    vibrar(); pintar();
+  };
+  const iv = setInterval(() => {
+    if (pausa) return;
+    const p = pasos[idx];
+    if (p.t === 's' || p.descanso) {
+      t++;
+      if (p.val - t === 3) vibrar(80);
+      if (t >= p.val) { campana(p.descanso ? 660 : 528); siguiente(); return; }
+      const r = $('.reloj', fs); if (r) r.textContent = mmss(p.val - t);
+    }
+  }, 1000);
+  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  pintar();
+}
+
+function finSesion(rutina, nivel, minutos, habito, manual) {
+  modal(`<h2>${manual ? 'Registrar ' + rutina.toLowerCase() : '¡Bien hecho! 🎉'}</h2>
+    ${htmlCampos([
+      { k: 'minutos', l: 'Minutos', t: 'number', def: minutos },
+      { k: 'sensacion', l: '¿Cómo te sentiste?', t: 'select', op: ['Bien', 'Cansado', 'Me costó'] },
+      { k: 'molestia', l: 'Tuve alguna molestia o dolor', t: 'check' },
+      { k: 'nota', l: 'Nota (opcional)', t: 'text', ph: 'Ej.: molestia leve en el testículo izquierdo después de las sentadillas' },
+    ])}
+    <button class="btn full mt" data-ok>Guardar</button>`, (o) => {
+    $('[data-ok]', o).onclick = async () => {
+      const v = leerCampos([{ k: 'minutos', t: 'number' }, { k: 'sensacion', t: 'select' }, { k: 'molestia', t: 'check' }, { k: 'nota', t: 'text' }], o);
+      await nuevoRegistro('ejercicio', hoyStr(), { rutina, nivel, ...v });
+      await marcarHabito(habito);
+      o.remove(); toast('Sesión guardada 💪'); render();
+    };
+  });
+}
+
+/* =========================================================
+   CALMA: respiración, meditación, oración, rescate, dormir
+   ========================================================= */
+async function vistaCalma() {
+  const sub = S.sub.calma || 'inicio';
+  const tabs = [['inicio', '🕊️ Calma'], ['oracion', '🙏 Oración'], ['noche', '🌙 Dormir'], ['diario', '📖 Mi diario']];
+  let cuerpo = '';
+
+  if (sub === 'inicio') {
+    cuerpo = `
+    <div class="card verde"><h2>🫶 Momento de ansiedad</h2>
+      <p>Si sientes que empieza, entra acá. Te acompaño paso a paso.</p>
+      <button class="btn full" onclick="rescate()">Entrar ahora</button></div>
+    <div class="card"><h2>🌬️ Respiración 4-6</h2>
+      <p class="mut">Inhalas en 4 y exhalas en 6. Exhalar más largo le avisa al cuerpo que está a salvo.</p>
+      <div class="fila wrap">${[2, 4, 6, 10].map((m) => `<button class="btn sec chico" data-resp="${m}">${m} min</button>`).join('')}</div></div>
+    <div class="card"><h2>🧘 Meditación guiada</h2>
+      <p class="mut">Frases suaves que van apareciendo y una campanita al final. Empieza con 4 minutos, como vienes haciendo.</p>
+      <div class="fila wrap">${[4, 7, 10, 15].map((m) => `<button class="btn sec chico" data-med="${m}">${m} min</button>`).join('')}</div></div>
+    <div class="card"><h2>⏱️ Silencio</h2>
+      <p class="mut">Solo temporizador, sin texto. Campanita al inicio y al final.</p>
+      <div class="fila wrap">${[3, 5, 10, 20].map((m) => `<button class="btn sec chico" data-sil="${m}">${m} min</button>`).join('')}</div></div>`;
+  }
+
+  if (sub === 'oracion') {
+    const ors = perfil().oraciones || [];
+    const regs = (await registros('oracion')).slice(0, 5);
+    cuerpo = `
+    <div class="grid2" style="margin-bottom:12px">
+      <button class="btn" onclick="oracionGuiada('mañana')">☀️ Oración de la mañana</button>
+      <button class="btn" style="background:var(--azul)" onclick="oracionGuiada('noche')">🌙 Oración de la noche</button>
+    </div>
+    <div class="card"><div class="fila entre"><h2 class="mb0">Mis oraciones</h2><button class="btn chico sec" id="or-add">+ Agregar</button></div>
+      <p class="mut">Guarda acá las oraciones que te hacen bien. Aparecen en tu momento de oración.</p>
+      ${ors.map((o, i) => `<div class="lista-item"><div class="fila entre"><b>${esc(o.titulo)}</b><button class="btn chico borde" data-or="${i}">✎</button></div><small style="white-space:pre-wrap">${esc(o.texto.slice(0, 140))}${o.texto.length > 140 ? '…' : ''}</small></div>`).join('') || '<p class="mut">Todavía no agregaste ninguna.</p>'}
+    </div>
+    <div class="card"><h2>Últimos momentos de oración</h2>
+      ${regs.map((r) => `<div class="lista-item"><small>${fechaCorta(r.fecha)} · ${esc(r.datos.momento)}</small>${r.datos.gratitud ? `<div>🙌 ${esc(r.datos.gratitud)}</div>` : ''}${r.datos.pido ? `<div>🤲 ${esc(r.datos.pido)}</div>` : ''}</div>`).join('') || '<p class="mut">Acá vas a ver lo que agradeciste y pediste.</p>'}
+    </div>`;
+  }
+
+  if (sub === 'noche') {
+    const hoy = hoyStr(); await cargarDias(hoy, hoy);
+    const d = S.dias[hoy] || {};
+    const pasos = [
+      ['pantallas', '📵 Dejar el celular 30 minutos antes (después de esto 😉)'],
+      ['luz', '💡 Luces bajas en la casa'],
+      ['cafe', '☕ Nada de café ni mate después de las 18 h'],
+      ['cena', '🍽️ Cena liviana, 2 horas antes de acostarme'],
+      ['agua_mesa', '🥤 Vaso de agua en la mesa de luz (por la boca seca)'],
+      ['respiracion', '🌬️ Respiración 4-6 en la cama'],
+      ['oracion', '🙏 Oración de la noche'],
+    ];
+    const r = d.rutinaNoche || {};
+    cuerpo = `
+    <div class="card"><h2>🌙 Rutina para dormir</h2>
+      ${pasos.map(([k, t]) => `<div class="check ${r[k] ? 'ok' : ''}" data-rn="${k}"><span class="caja">✓</span><span class="txt">${t}</span></div>`).join('')}
+    </div>
+    <div class="card"><h2>🧠 Descarga mental</h2>
+      <p class="mut">Escribe lo que te da vueltas (problemas, plata, salud). Queda acá guardado y mañana lo retomas. Tu cabeza no tiene que sostenerlo de noche.</p>
+      <textarea class="i" id="descarga" placeholder="Lo que me preocupa hoy…">${esc(d.descarga || '')}</textarea>
+      <button class="btn full mt" id="desc-ok">Guardar y soltar</button></div>
+    <div class="card"><h2>😴 Si te despiertas de madrugada</h2>
+      <ul><li>No mires la hora: eso activa la cabeza.</li>
+      <li>Haz 10 respiraciones 4-6 sin moverte.</li>
+      <li>Si pasaron unos 20 minutos y sigues despierto, levántate, luz tenue, algo tranquilo, y vuelve cuando aparezca el sueño.</li>
+      <li>Si aparece el pensamiento de "¿y si me pasa algo?": nómbralo ("esto es ansiedad"), y vuelve a la respiración.</li></ul>
+      <button class="btn full sec" onclick="respiracion(4, true)">🌬️ Respiración nocturna (pantalla oscura)</button></div>
+    <div class="nota">Roncar, despertarte con la boca muy seca y levantarte cansado son cosas para comentarle al médico: puede indicarte un estudio del sueño. Registra tus noches en <b>Salud → Sueño</b> y llévale el resumen.</div>`;
+  }
+
+  if (sub === 'diario') {
+    const [med, ora, epi] = await Promise.all([registros('meditacion'), registros('oracion'), registros('episodio')]);
+    const hoy = hoyStr();
+    const m30 = med.filter((r) => difDias(hoy, r.fecha) < 30);
+    cuerpo = `
+    <div class="grid2">
+      <div class="card centro"><div class="big">${m30.length}</div><small>meditaciones (30 días)</small></div>
+      <div class="card centro"><div class="big">${m30.reduce((a, r) => a + (r.datos.minutos || 0), 0)}</div><small>minutos de calma</small></div>
+      <div class="card centro"><div class="big">${ora.filter((r) => difDias(hoy, r.fecha) < 30).length}</div><small>oraciones (30 días)</small></div>
+      <div class="card centro"><div class="big">${epi.filter((r) => difDias(hoy, r.fecha) < 30).length}</div><small>momentos de ansiedad (30 días)</small></div>
+    </div>
+    <div class="card"><h2>Momentos de ansiedad</h2>
+      <p class="mut">Ver qué pensaste primero y qué te ayudó sirve mucho para trabajarlo con tu psicólogo.</p>
+      ${epi.slice(0, 10).map((r) => `<div class="lista-item"><small>${fechaCorta(r.fecha)} ${esc(r.datos.hora || '')} · intensidad ${r.datos.intensidad ?? '?'}/10${r.datos.duracion ? ' · ' + esc(r.datos.duracion) : ''}</small><div>💭 ${esc(r.datos.pense || '—')}</div>${r.datos.ayudo ? `<div>✅ ${esc(r.datos.ayudo)}</div>` : ''}</div>`).join('') || '<p class="mut">Sin registros. ¡Ojalá siga así!</p>'}
+      <button class="btn full sec mt" onclick="formEpisodio()">+ Registrar un momento</button>
+    </div>`;
+  }
+
+  $('#app').innerHTML = `${encabezado('Calma', 'Mente y espíritu')}
+    <div class="tabs">${tabs.map(([k, t]) => `<span class="chip ${sub === k ? 'on' : ''}" data-sub="${k}">${t}</span>`).join('')}</div>${cuerpo}`;
+  document.querySelectorAll('[data-sub]').forEach((el) => (el.onclick = () => { S.sub.calma = el.dataset.sub; render(); }));
+  document.querySelectorAll('[data-resp]').forEach((el) => (el.onclick = () => respiracion(Number(el.dataset.resp))));
+  document.querySelectorAll('[data-med]').forEach((el) => (el.onclick = () => meditar(Number(el.dataset.med), true)));
+  document.querySelectorAll('[data-sil]').forEach((el) => (el.onclick = () => meditar(Number(el.dataset.sil), false)));
+  document.querySelectorAll('[data-rn]').forEach((el) => (el.onclick = async () => {
+    el.classList.toggle('ok');
+    const hoy = hoyStr(); const r = { ...((S.dias[hoy] || {}).rutinaNoche || {}), [el.dataset.rn]: el.classList.contains('ok') };
+    await marcarDia(hoy, { rutinaNoche: r });
+    if (Object.values(r).filter(Boolean).length >= 4) await marcarHabito('dormir');
+  }));
+  const dok = $('#desc-ok'); if (dok) dok.onclick = async () => { await marcarDia(hoyStr(), { descarga: $('#descarga').value }); toast('Guardado. Ahora a soltarlo 🌙'); };
+  const oa = $('#or-add'); if (oa) oa.onclick = () => editarOracion();
+  document.querySelectorAll('[data-or]').forEach((el) => (el.onclick = () => editarOracion(Number(el.dataset.or))));
+}
+
+function respiracion(minutos, oscuro) {
+  const total = minutos * 60;
+  let t = 0, fase = 'in', ft = 0;
+  const fs = document.createElement('div');
+  fs.className = 'full-screen calmo';
+  if (oscuro) fs.style.background = '#0d1716';
+  fs.innerHTML = `<button class="cerrar" data-x>✕</button>
+    <div class="circulo" id="circ">Inhala</div>
+    <div id="cuenta" style="font-size:1.4rem;opacity:.9">4</div>
+    <p style="opacity:.75" id="rest">${mmss(total)}</p>`;
+  document.body.appendChild(fs);
+  pantallaEncendida(true);
+  const circ = $('#circ', fs);
+  const aplicar = () => {
+    circ.style.transitionDuration = fase === 'in' ? '4s' : '6s';
+    circ.style.transform = fase === 'in' ? 'scale(1.25)' : 'scale(0.8)';
+    circ.textContent = fase === 'in' ? 'Inhala' : 'Exhala';
+  };
+  requestAnimationFrame(() => { circ.style.transform = 'scale(0.8)'; requestAnimationFrame(aplicar); });
+  const iv = setInterval(async () => {
+    t++; ft++;
+    const dur = fase === 'in' ? 4 : 6;
+    if (ft >= dur) { fase = fase === 'in' ? 'out' : 'in'; ft = 0; aplicar(); }
+    $('#cuenta', fs).textContent = (fase === 'in' ? 4 : 6) - ft;
+    $('#rest', fs).textContent = mmss(total - t);
+    if (t >= total) { cerrar(); campana(); await registrarCalma('Respiración 4-6', minutos); }
+  }, 1000);
+  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  $('[data-x]', fs).onclick = async () => { cerrar(); if (t >= 60) await registrarCalma('Respiración 4-6', Math.round(t / 60)); };
+}
+
+function meditar(minutos, guiada) {
+  const total = minutos * 60;
+  let t = 0, pausa = false;
+  const cada = Math.max(25, Math.floor(total / GUIA_MEDITACION.length));
+  const fs = document.createElement('div');
+  fs.className = 'full-screen calmo';
+  document.body.appendChild(fs);
+  pantallaEncendida(true); campana(432);
+  const pintar = () => {
+    const frase = guiada ? GUIA_MEDITACION[Math.min(GUIA_MEDITACION.length - 1, Math.floor(t / cada))] : '';
+    fs.innerHTML = `<button class="cerrar" data-x>✕</button>
+      ${guiada ? `<p class="paso-txt" style="min-height:5em">${esc(frase)}</p>` : '<p style="opacity:.8">Silencio</p>'}
+      <div class="reloj">${mmss(total - t)}</div>
+      <button class="btn sec" data-p>${pausa ? '▶ Seguir' : '⏸ Pausa'}</button>`;
+    $('[data-x]', fs).onclick = async () => { cerrar(); if (t >= 60) await registrarCalma(guiada ? 'Meditación guiada' : 'Silencio', Math.round(t / 60)); };
+    $('[data-p]', fs).onclick = () => { pausa = !pausa; pintar(); };
+  };
+  const iv = setInterval(async () => {
+    if (pausa) return;
+    t++;
+    if (t >= total) { cerrar(); campana(432); await registrarCalma(guiada ? 'Meditación guiada' : 'Silencio', minutos); return; }
+    if (guiada && t % cada === 0) pintar(); else { const r = $('.reloj', fs); if (r) r.textContent = mmss(total - t); }
+  }, 1000);
+  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  pintar();
+}
+
+async function registrarCalma(modo, minutos) {
+  await nuevoRegistro('meditacion', hoyStr(), { modo, minutos });
+  await marcarHabito('meditacion');
+  toast(`${minutos} min de calma guardados 🕊️`);
+  if (S.vista === 'hoy' || S.vista === 'calma') render();
+}
+
+function editarOracion(i) {
+  const ors = [...(perfil().oraciones || [])];
+  const o0 = i !== undefined ? ors[i] : { titulo: '', texto: '' };
+  modal(`<div class="fila entre"><h2 class="mb0">${i !== undefined ? 'Editar' : 'Nueva'} oración</h2><button class="btn chico borde" data-x>✕</button></div>
+    <label class="f">Título</label><input class="i" id="or-t" value="${esc(o0.titulo)}" placeholder="Ej.: Por mi familia">
+    <label class="f">Texto</label><textarea class="i" id="or-x" style="min-height:180px">${esc(o0.texto)}</textarea>
+    <button class="btn full mt" data-ok>Guardar</button>
+    ${i !== undefined ? '<button class="btn full mt borde" data-del style="color:var(--rojo)">Borrar</button>' : ''}`, (o) => {
+    $('[data-x]', o).onclick = () => o.remove();
+    $('[data-ok]', o).onclick = async () => {
+      const n = { titulo: $('#or-t', o).value.trim() || 'Oración', texto: $('#or-x', o).value.trim() };
+      if (i !== undefined) ors[i] = n; else ors.push(n);
+      await guardarPerfil({ oraciones: ors }); o.remove(); render();
+    };
+    const del = $('[data-del]', o); if (del) del.onclick = async () => { ors.splice(i, 1); await guardarPerfil({ oraciones: ors }); o.remove(); render(); };
+  });
+}
+
+function oracionGuiada(momento) {
+  const ors = perfil().oraciones || [];
+  const pasos = [
+    { t: 'Silencio', txt: momento === 'mañana' ? 'Antes de empezar el día, respira tres veces profundo. Este momento es para ti y para Dios.' : 'Termina el día. Respira tres veces profundo y deja que el cuerpo afloje.', seg: 30 },
+    { t: 'Agradecer', txt: momento === 'mañana' ? '¿Por qué tres cosas puedes dar gracias hoy?' : '¿Qué tres cosas buenas pasaron hoy, aunque sean chiquitas?', campo: 'gratitud' },
+    { t: 'Entregar', txt: 'Lo que te preocupa (la salud, el dinero, el trabajo) no tienes que cargarlo solo. Escríbelo y entrégalo.', campo: 'entrego' },
+    { t: 'Pedir', txt: '¿Qué pides hoy para ti y para los tuyos?', campo: 'pido' },
+    ...(ors.length ? [{ t: 'Mis oraciones', txt: '', oraciones: true }] : []),
+    { t: momento === 'mañana' ? 'Para el día' : 'Para descansar', txt: momento === 'mañana' ? 'Elige una intención simple para hoy: paciencia, presencia, calma…' : 'Suelta el día. Lo que no se resolvió hoy puede esperar a mañana. Estás cuidado.', campo: momento === 'mañana' ? 'intencion' : null },
+  ];
+  const datos = { momento };
+  let i = 0;
+  const fs = document.createElement('div');
+  fs.className = 'full-screen calmo';
+  if (momento === 'noche') fs.style.background = 'linear-gradient(180deg,#1d2b45,#2c3e5c)';
+  document.body.appendChild(fs);
+  const pintar = () => {
+    const p = pasos[i];
+    fs.innerHTML = `<button class="cerrar" data-x>✕</button>
+      <small style="opacity:.75">${i + 1} de ${pasos.length}</small>
+      <h1 style="margin-top:10px">${p.t}</h1>
+      ${p.txt ? `<p class="paso-txt">${p.txt}</p>` : ''}
+      ${p.oraciones ? `<div style="text-align:left;max-width:480px;width:100%">${ors.map((o) => `<div style="background:rgba(255,255,255,.12);border-radius:14px;padding:12px;margin:8px 0"><b>${esc(o.titulo)}</b><p style="white-space:pre-wrap;margin:.4em 0 0">${esc(o.texto)}</p></div>`).join('')}</div>` : ''}
+      ${p.campo ? `<textarea class="i" id="campo" style="max-width:480px;min-height:110px;margin-top:8px" placeholder="Escribe aquí (opcional)">${esc(datos[p.campo] || '')}</textarea>` : ''}
+      ${p.seg ? `<div class="reloj" id="seg">${p.seg}</div>` : ''}
+      <div class="fila mt" style="gap:10px">${i > 0 ? '<button class="btn sec" data-ant>←</button>' : ''}<button class="btn" data-sig>${i === pasos.length - 1 ? 'Amén 🙏' : 'Siguiente →'}</button></div>`;
+    $('[data-x]', fs).onclick = cerrar;
+    const guardarCampo = () => { const c = $('#campo', fs); if (c && p.campo) datos[p.campo] = c.value.trim(); };
+    const ant = $('[data-ant]', fs); if (ant) ant.onclick = () => { guardarCampo(); i--; pintar(); };
+    $('[data-sig]', fs).onclick = async () => {
+      guardarCampo();
+      if (i < pasos.length - 1) { i++; pintar(); return; }
+      cerrar();
+      await nuevoRegistro('oracion', hoyStr(), datos);
+      await marcarHabito(momento === 'mañana' ? 'oracion_m' : 'oracion_n');
+      toast('Que tengas ' + (momento === 'mañana' ? 'un buen día ☀️' : 'buenas noches 🌙'));
+      render();
+    };
+    if (p.seg) {
+      let s = p.seg;
+      const iv = setInterval(() => { s--; const el = $('#seg', fs); if (!el) return clearInterval(iv); el.textContent = s; if (s <= 0) { clearInterval(iv); el.textContent = '✓'; campana(432); } }, 1000);
+    }
+  };
+  function cerrar() { fs.remove(); }
+  pintar();
+}
+
+// ---------- Rescate de ansiedad ----------
+function rescate() {
+  const p = perfil();
+  const pasos = [
+    { h: 'Estás a salvo', txt: 'Lo que sientes es <b>ansiedad</b>. Es muy incómoda, pero no es peligrosa y <b>siempre pasa</b>. Tu cuerpo está haciendo una falsa alarma.' + (p.recordatorio ? '<br><br>' + esc(p.recordatorio).replace(/\n/g, '<br>') : '') },
+    { h: 'Respira conmigo', resp: true, txt: 'Inhala en 4… exhala lento en 6. Sigue el círculo. No hace falta hacerlo perfecto.' },
+    { h: 'Vuelve al presente', txt: 'Mira alrededor y nombra en voz baja:<br><br><b>5</b> cosas que ves<br><b>4</b> cosas que puedes tocar<br><b>3</b> sonidos que escuchas<br><b>2</b> olores<br><b>1</b> cosa que puedes saborear' },
+    { h: 'Primero vino el pensamiento', txt: 'Muchas veces primero aparece un pensamiento, como <i>"¿y si es algo grave?"</i>, y después llegan las sensaciones.<br><br>Un pensamiento no es un diagnóstico. Dile: <b>"te veo, eres ansiedad"</b>, y no le discutas. Deja que esté y que se vaya solo.' },
+    { h: 'Ocupa las manos', txt: 'Lo que más te sirve es distraerte: habla con alguien, lava los platos, camina por la casa, ordena algo, pon música.' + (p.contactoNombre ? `<br><br>Puedes pedirle a <b>${esc(p.contactoNombre)}</b> que te hable de cualquier cosa.` : '') },
+    ...(p.planRescate ? [{ h: 'Tu plan', txt: esc(p.planRescate).replace(/\n/g, '<br>') }] : []),
+    { h: 'Ya está bajando', txt: 'Cada vez que atraviesas uno de estos momentos sin que pase nada grave, tu cerebro aprende que no era peligro.<br><br>Lo hiciste bien.', fin: true },
+  ];
+  let i = 0;
+  const fs = document.createElement('div');
+  fs.className = 'full-screen calmo';
+  document.body.appendChild(fs);
+  pantallaEncendida(true);
+  let iv = null;
+  const pintar = () => {
+    clearInterval(iv);
+    const ps = pasos[i];
+    fs.innerHTML = `<button class="cerrar" data-x>✕</button>
+      <h1>${ps.h}</h1>
+      ${ps.resp ? '<div class="circulo" id="circ">Inhala</div>' : ''}
+      <p class="paso-txt">${ps.txt}</p>
+      ${ps.fin && p.contactoTel ? `<a class="btn sec" href="tel:${esc(p.contactoTel)}" style="text-decoration:none;margin-bottom:10px">📞 Llamar a ${esc(p.contactoNombre || 'mi contacto')}</a>` : ''}
+      <div class="fila mt" style="gap:10px">${i > 0 ? '<button class="btn sec" data-ant>←</button>' : ''}
+      ${ps.fin ? '<button class="btn" data-reg>Anotar cómo fue</button><button class="btn sec" data-x2>Cerrar</button>' : '<button class="btn" data-sig>Siguiente →</button>'}</div>
+      ${!ps.fin && p.contactoTel ? `<p class="mt"><a href="tel:${esc(p.contactoTel)}" style="color:#fff">📞 Llamar a ${esc(p.contactoNombre || 'mi contacto')}</a></p>` : ''}
+      <p style="opacity:.7;font-size:.82rem;margin-top:22px">Si aparece algo distinto a tus episodios de siempre (por ejemplo debilidad de un lado del cuerpo, dificultad para hablar o dolor de pecho fuerte que no cede), llama al 107 o ve a la guardia.</p>`;
+    $('[data-x]', fs).onclick = cerrar;
+    const x2 = $('[data-x2]', fs); if (x2) x2.onclick = cerrar;
+    const ant = $('[data-ant]', fs); if (ant) ant.onclick = () => { i--; pintar(); };
+    const sig = $('[data-sig]', fs); if (sig) sig.onclick = () => { i++; pintar(); };
+    const reg = $('[data-reg]', fs); if (reg) reg.onclick = () => { cerrar(); formEpisodio(); };
+    if (ps.resp) {
+      const circ = $('#circ', fs); let fase = 'in', ft = 0;
+      const aplicar = () => { circ.style.transitionDuration = fase === 'in' ? '4s' : '6s'; circ.style.transform = fase === 'in' ? 'scale(1.25)' : 'scale(0.8)'; circ.textContent = fase === 'in' ? 'Inhala' : 'Exhala'; };
+      requestAnimationFrame(() => { circ.style.transform = 'scale(0.8)'; requestAnimationFrame(aplicar); });
+      iv = setInterval(() => { ft++; if (ft >= (fase === 'in' ? 4 : 6)) { fase = fase === 'in' ? 'out' : 'in'; ft = 0; aplicar(); } }, 1000);
+    }
+  };
+  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  pintar();
+}
+
+const CAMPOS_EPISODIO = [
+  { k: 'hora', l: 'Hora aproximada', t: 'time' },
+  { k: 'donde', l: '¿Dónde estabas?', t: 'select', op: ['En casa', 'En la cama / de madrugada', 'En el trabajo', 'En la calle', 'Otro'] },
+  { k: 'pense', l: '¿Qué pensaste primero?', t: 'textarea', ph: 'Ej.: "¿y si es un ACV?"' },
+  { k: 'senti', l: '¿Qué sentiste en el cuerpo?', t: 'textarea', ph: 'Ej.: dolor de cabeza atrás, cara adormecida' },
+  { k: 'intensidad', l: 'Intensidad (0 a 10)', t: 'number' },
+  { k: 'duracion', l: '¿Cuánto duró?', t: 'text', ph: 'Ej.: 15 minutos' },
+  { k: 'ayudo', l: '¿Qué te ayudó?', t: 'textarea', ph: 'Ej.: que mi esposa me hablara, respirar, ponerme a hacer algo' },
+];
+function formEpisodio(existente) { formRegistro('episodio', 'Momento de ansiedad', CAMPOS_EPISODIO, existente); }
+
+/* =========================================================
+   SALUD
+   ========================================================= */
+const CAMPOS = {
+  consulta: [
+    { k: 'especialidad', l: 'Especialidad', t: 'select', op: ['Clínica médica', 'Cardiología', 'Neurología', 'Urología', 'Psiquiatría', 'Nutrición', 'Neumonología / sueño', 'Otorrinolaringología', 'Guardia', 'Otra'] },
+    { k: 'profesional', l: 'Profesional', t: 'text', ph: 'Dr./Dra.' },
+    { k: 'motivo', l: 'Motivo', t: 'textarea' },
+    { k: 'dijo', l: '¿Qué te dijo?', t: 'textarea' },
+    { k: 'indicaciones', l: 'Indicaciones / medicación', t: 'textarea' },
+    { k: 'proximo', l: 'Próximo control', t: 'date' },
+    { k: 'preguntas', l: 'Preguntas para la próxima vez', t: 'textarea' },
+  ],
+  psicologo: [
+    { k: 'temas', l: '¿De qué hablamos?', t: 'textarea' },
+    { k: 'aprendi', l: '¿Qué me llevo?', t: 'textarea' },
+    { k: 'tarea', l: 'Tarea o práctica para la semana', t: 'textarea' },
+    { k: 'animo', l: '¿Cómo salí de la sesión?', t: 'escala', op: ANIMOS },
+  ],
+  sueno: [
+    { k: 'acoste', l: '¿A qué hora te acostaste?', t: 'time' },
+    { k: 'levante', l: '¿A qué hora te levantaste?', t: 'time' },
+    { k: 'tardo', l: '¿Cuánto tardaste en dormirte? (min)', t: 'number' },
+    { k: 'despertares', l: '¿Cuántas veces te despertaste?', t: 'number' },
+    { k: 'ronque', l: 'Ronqué (o me dijeron)', t: 'check' },
+    { k: 'boca_seca', l: 'Desperté con la boca o garganta muy seca', t: 'check' },
+    { k: 'pausas', l: 'Me dijeron que dejé de respirar o me desperté ahogado', t: 'check' },
+    { k: 'calidad', l: '¿Cómo te levantaste?', t: 'escala', op: ['😫', '😴', '😐', '🙂', '😃'] },
+    { k: 'nota', l: 'Nota', t: 'text' },
+  ],
+  peso: [
+    { k: 'peso', l: 'Peso (kg)', t: 'number' },
+    { k: 'cintura', l: 'Cintura a la altura del ombligo (cm)', t: 'number' },
+    { k: 'presion', l: 'Presión arterial (si te la tomaste)', t: 'text', ph: 'Ej.: 120/80' },
+  ],
+  estudio: [
+    { k: 'tipo', l: 'Tipo de estudio', t: 'select', op: ['Análisis de sangre', 'Ecocardiograma', 'Electrocardiograma', 'Ecografía', 'Estudio del sueño', 'Imagen (RX, TAC, RMN)', 'Otro'] },
+    { k: 'lugar', l: 'Lugar / laboratorio', t: 'text' },
+    { t: 'titulo', l: 'Valores (si es análisis de sangre)' },
+    ...LAB.map((v) => ({ k: v.k, l: `${v.n} (${v.u})`, t: 'number' })),
+    { k: 'resultado', l: 'Resultado / conclusión del informe', t: 'textarea' },
+  ],
+};
+const TITULOS = { consulta: 'Consulta médica', psicologo: 'Sesión con el psicólogo', sueno: 'Noche de sueño', peso: 'Peso y medidas', estudio: 'Estudio' };
+
+function horasSueno(d) {
+  if (!d.acoste || !d.levante) return null;
+  const [a1, a2] = d.acoste.split(':').map(Number), [l1, l2] = d.levante.split(':').map(Number);
+  let m = (l1 * 60 + l2) - (a1 * 60 + a2); if (m <= 0) m += 1440;
+  return Math.max(0, (m - (d.tardo || 0)) / 60);
+}
+function estadoLab(def, v) {
+  if (v === null || v === undefined || v === '') return '';
+  if (def.ok(v)) return '<span class="badge">OK</span>';
+  if (def.medio(v)) return '<span class="badge medio">Revisar</span>';
+  return '<span class="badge alto">Fuera de rango</span>';
+}
+function sparkline(vals, w = 300, h = 60) {
+  if (vals.length < 2) return '';
+  const min = Math.min(...vals), max = Math.max(...vals), r = max - min || 1;
+  const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * (w - 10) + 5},${h - 5 - ((v - min) / r) * (h - 10)}`).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px"><polyline points="${pts}" fill="none" stroke="#1f6f5c" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${vals.map((v, i) => `<circle cx="${(i / (vals.length - 1)) * (w - 10) + 5}" cy="${h - 5 - ((v - min) / r) * (h - 10)}" r="3.5" fill="#1f6f5c"/>`).join('')}</svg>`;
+}
+
+async function vistaSalud() {
+  const sub = S.sub.salud || 'resumen';
+  const tabs = [['resumen', '📊 Resumen'], ['estudio', '🧪 Estudios'], ['consulta', '🩺 Consultas'], ['psicologo', '💬 Psicólogo'], ['sueno', '😴 Sueño'], ['peso', '⚖️ Peso'], ['episodio', '🫶 Ansiedad']];
+  let cuerpo = '';
+  const hoy = hoyStr();
+
+  if (sub === 'resumen') {
+    const [est, con, sue, pes, epi, psi, ej] = await Promise.all(['estudio', 'consulta', 'sueno', 'peso', 'episodio', 'psicologo', 'ejercicio'].map((t) => registros(t)));
+    const lab = est.filter((r) => r.datos.tipo === 'Análisis de sangre');
+    const ult = lab[0];
+    const s14 = sue.filter((r) => difDias(hoy, r.fecha) < 14);
+    const hs = s14.map((r) => horasSueno(r.datos)).filter((x) => x !== null);
+    const prom = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+    const proximos = con.filter((r) => r.datos.proximo && r.datos.proximo >= hoy).sort((a, b) => a.datos.proximo.localeCompare(b.datos.proximo));
+    const p = pes[0];
+    const alt = Number(perfil().altura) || 0;
+    const imc = p && p.datos.peso && alt ? p.datos.peso / ((alt / 100) ** 2) : null;
+    cuerpo = `
+    ${proximos.length ? `<div class="card suave"><h3>📅 Próximos controles</h3>${proximos.slice(0, 3).map((r) => `<div>${fechaCorta(r.datos.proximo)} · ${esc(r.datos.especialidad)} ${r.datos.profesional ? '(' + esc(r.datos.profesional) + ')' : ''}</div>`).join('')}</div>` : ''}
+    <div class="grid2">
+      <div class="card centro"><div class="big">${p ? esc(p.datos.peso) : '—'}</div><small>kg${imc ? ' · IMC ' + imc.toFixed(1) : ''}</small></div>
+      <div class="card centro"><div class="big">${p && p.datos.cintura ? esc(p.datos.cintura) : '—'}</div><small>cm de cintura</small></div>
+      <div class="card centro"><div class="big">${hs.length ? prom(hs).toFixed(1) : '—'}</div><small>horas de sueño (prom. 14 días)</small></div>
+      <div class="card centro"><div class="big">${s14.length ? prom(s14.map((r) => r.datos.despertares || 0)).toFixed(1) : '—'}</div><small>despertares por noche</small></div>
+      <div class="card centro"><div class="big">${epi.filter((r) => difDias(hoy, r.fecha) < 30).length}</div><small>momentos de ansiedad (30 días)</small></div>
+      <div class="card centro"><div class="big">${ej.filter((r) => difDias(hoy, r.fecha) < 30).reduce((a, r) => a + (Number(r.datos.minutos) || 0), 0)}</div><small>min de ejercicio (30 días)</small></div>
+    </div>
+    ${ult ? `<div class="card"><h3>🧪 Último análisis (${fechaCorta(ult.fecha)})</h3><table class="val"><tr><th>Valor</th><th>Resultado</th><th>Ref.</th><th></th></tr>
+      ${LAB.filter((v) => ult.datos[v.k] != null).map((v) => `<tr><td>${v.n}</td><td><b>${ult.datos[v.k]}</b></td><td><small>${v.ref}</small></td><td>${estadoLab(v, ult.datos[v.k])}</td></tr>`).join('')}</table></div>` : ''}
+    <button class="btn full" id="res-med">📤 Generar resumen para llevar al médico</button>
+    <div class="nota">Las referencias son generales para adultos. Quien interpreta tus valores es tu médico.</div>`;
+    setTimeout(() => {
+      const b = $('#res-med'); if (!b) return;
+      b.onclick = () => {
+        const L = [];
+        L.push(`RESUMEN DE SALUD — ${S.usuario.nombre} — ${fechaCorta(hoy)}`);
+        if (perfil().edad) L.push(`Edad: ${perfil().edad} · Altura: ${perfil().altura || '?'} cm`);
+        if (p) L.push(`Peso: ${p.datos.peso} kg${p.datos.cintura ? ' · Cintura: ' + p.datos.cintura + ' cm' : ''}${p.datos.presion ? ' · Presión: ' + p.datos.presion : ''} (${fechaCorta(p.fecha)})`);
+        if (ult) { L.push(`\nÚltimo análisis (${fechaCorta(ult.fecha)}):`); LAB.forEach((v) => ult.datos[v.k] != null && L.push(`• ${v.n}: ${ult.datos[v.k]} ${v.u}`)); }
+        if (s14.length) {
+          L.push(`\nSueño (últimas ${s14.length} noches registradas):`);
+          if (hs.length) L.push(`• Horas promedio: ${prom(hs).toFixed(1)}`);
+          L.push(`• Despertares promedio: ${prom(s14.map((r) => r.datos.despertares || 0)).toFixed(1)}`);
+          L.push(`• Noches con ronquido: ${s14.filter((r) => r.datos.ronque).length} · con boca seca: ${s14.filter((r) => r.datos.boca_seca).length} · con pausas/ahogo: ${s14.filter((r) => r.datos.pausas).length}`);
+        }
+        const e30 = epi.filter((r) => difDias(hoy, r.fecha) < 30);
+        L.push(`\nMomentos de ansiedad últimos 30 días: ${e30.length}`);
+        L.push(`Ejercicio últimos 30 días: ${ej.filter((r) => difDias(hoy, r.fecha) < 30).reduce((a, r) => a + (Number(r.datos.minutos) || 0), 0)} minutos`);
+        const mol = ej.filter((r) => r.datos.molestia && difDias(hoy, r.fecha) < 60);
+        if (mol.length) L.push(`Molestias durante ejercicio (60 días): ${mol.length}${mol[0].datos.nota ? ' — ' + mol[0].datos.nota : ''}`);
+        if (psi.length) L.push(`Sesiones de psicología registradas: ${psi.length}`);
+        compartir(L.join('\n'));
+      };
+    });
+  } else if (sub === 'episodio') {
+    const regs = await registros('episodio');
+    cuerpo = `<button class="btn full" id="nuevo" style="margin-bottom:12px">+ Registrar un momento</button>
+      <div class="card">${regs.map((r) => `<div class="lista-item" data-ed="${r.id}" style="cursor:pointer"><small>${fechaCorta(r.fecha)} ${esc(r.datos.hora || '')} · ${esc(r.datos.donde || '')} · ${r.datos.intensidad ?? '?'}/10</small><div>💭 ${esc(r.datos.pense || '—')}</div>${r.datos.ayudo ? `<div><small>✅ ${esc(r.datos.ayudo)}</small></div>` : ''}</div>`).join('') || '<p class="mut">Sin registros.</p>'}</div>`;
+    setTimeout(() => {
+      $('#nuevo').onclick = () => formEpisodio();
+      document.querySelectorAll('[data-ed]').forEach((el) => (el.onclick = () => formEpisodio(regs.find((r) => r.id == el.dataset.ed))));
+    });
+  } else {
+    const regs = await registros(sub);
+    const linea = {
+      estudio: (r) => `<b>${esc(r.datos.tipo)}</b>${r.datos.lugar ? ' · ' + esc(r.datos.lugar) : ''}<br><small>${r.datos.resultado ? esc(r.datos.resultado.slice(0, 100)) : LAB.filter((v) => r.datos[v.k] != null).map((v) => v.n.split(' ')[0] + ' ' + r.datos[v.k]).join(' · ')}</small>`,
+      consulta: (r) => `<b>${esc(r.datos.especialidad)}</b>${r.datos.profesional ? ' · ' + esc(r.datos.profesional) : ''}<br><small>${esc((r.datos.dijo || r.datos.motivo || '').slice(0, 100))}</small>`,
+      psicologo: (r) => `<b>Sesión</b> ${r.datos.animo ? ANIMOS[r.datos.animo - 1] : ''}<br><small>${esc((r.datos.aprendi || r.datos.temas || '').slice(0, 100))}</small>${r.datos.tarea ? `<br><small>📝 ${esc(r.datos.tarea.slice(0, 80))}</small>` : ''}`,
+      sueno: (r) => { const h = horasSueno(r.datos); return `<b>${h !== null ? h.toFixed(1) + ' h' : '—'}</b> · ${r.datos.despertares ?? '?'} despertares ${r.datos.calidad ? ['😫', '😴', '😐', '🙂', '😃'][r.datos.calidad - 1] : ''}<br><small>${[r.datos.ronque && 'ronquido', r.datos.boca_seca && 'boca seca', r.datos.pausas && 'pausas'].filter(Boolean).join(' · ')}</small>`; },
+      peso: (r) => `<b>${esc(r.datos.peso ?? '—')} kg</b>${r.datos.cintura ? ' · ' + esc(r.datos.cintura) + ' cm' : ''}${r.datos.presion ? ' · ' + esc(r.datos.presion) : ''}`,
+    }[sub];
+    let extra = '';
+    if (sub === 'peso') {
+      const vals = regs.filter((r) => r.datos.peso).slice(0, 20).reverse().map((r) => Number(r.datos.peso));
+      if (vals.length >= 2) extra = `<div class="card"><h3>Evolución del peso</h3>${sparkline(vals)}<small>${vals[0]} → ${vals[vals.length - 1]} kg</small></div>`;
+    }
+    if (sub === 'estudio') {
+      const lab = regs.filter((r) => r.datos.tipo === 'Análisis de sangre');
+      if (lab.length >= 2) {
+        const [a, b] = lab;
+        extra = `<div class="card"><h3>Comparación de análisis</h3><table class="val"><tr><th>Valor</th><th>${fechaCorta(b.fecha)}</th><th>${fechaCorta(a.fecha)}</th><th></th></tr>
+          ${LAB.filter((v) => a.datos[v.k] != null || b.datos[v.k] != null).map((v) => {
+            const va = a.datos[v.k], vb = b.datos[v.k];
+            const fl = va != null && vb != null ? (va < vb ? '↓' : va > vb ? '↑' : '=') : '';
+            return `<tr><td>${v.n}</td><td>${vb ?? '—'}</td><td><b>${va ?? '—'}</b> ${fl}</td><td>${estadoLab(v, va)}</td></tr>`;
+          }).join('')}</table></div>`;
+      }
+    }
+    if (sub === 'sueno' && regs.length) {
+      const ult = regs.slice(0, 14);
+      const hs = ult.map((r) => horasSueno(r.datos)).filter((x) => x !== null);
+      extra = `<div class="card suave"><small>Últimas ${ult.length} noches</small><div class="fila entre mt">
+        <div><b>${hs.length ? (hs.reduce((a, b) => a + b, 0) / hs.length).toFixed(1) : '—'} h</b><br><small>promedio</small></div>
+        <div><b>${(ult.reduce((a, r) => a + (r.datos.despertares || 0), 0) / ult.length).toFixed(1)}</b><br><small>despertares</small></div>
+        <div><b>${ult.filter((r) => r.datos.boca_seca).length}</b><br><small>boca seca</small></div>
+        <div><b>${ult.filter((r) => r.datos.ronque).length}</b><br><small>ronquido</small></div></div></div>`;
+    }
+    cuerpo = `<button class="btn full" id="nuevo" style="margin-bottom:12px">+ ${sub === 'sueno' ? 'Registrar la noche' : 'Agregar'}</button>${extra}
+      <div class="card">${regs.map((r) => `<div class="lista-item" data-ed="${r.id}" style="cursor:pointer"><small class="mut">${fechaCorta(r.fecha)}</small><br>${linea(r)}</div>`).join('') || '<p class="mut">Todavía no hay registros.</p>'}</div>`;
+    setTimeout(() => {
+      $('#nuevo').onclick = () => formRegistro(sub, TITULOS[sub], CAMPOS[sub]);
+      document.querySelectorAll('[data-ed]').forEach((el) => (el.onclick = () => formRegistro(sub, TITULOS[sub], CAMPOS[sub], regs.find((r) => r.id == el.dataset.ed))));
+    });
+  }
+
+  $('#app').innerHTML = `${encabezado('Mi salud', 'Todo en un lugar para tus médicos')}
+    <div class="tabs">${tabs.map(([k, t]) => `<span class="chip ${sub === k ? 'on' : ''}" data-sub="${k}">${t}</span>`).join('')}</div>${cuerpo}`;
+  document.querySelectorAll('[data-sub]').forEach((el) => (el.onclick = () => { S.sub.salud = el.dataset.sub; render(); }));
+}
+
+/* =========================================================
+   AJUSTES
+   ========================================================= */
+const CAMPOS_PERFIL = [
+  { k: 'edad', l: 'Edad', t: 'number' },
+  { k: 'altura', l: 'Altura (cm)', t: 'number' },
+  { t: 'titulo', l: 'Para los momentos de ansiedad' },
+  { k: 'recordatorio', l: 'Algo que necesito recordar en ese momento', t: 'textarea', ph: 'Ej.: Ya me revisaron en la guardia y el corazón salió bien. Las otras veces pasó.' },
+  { k: 'contactoNombre', l: 'Persona de confianza', t: 'text', ph: 'Ej.: mi esposa' },
+  { k: 'contactoTel', l: 'Su teléfono', t: 'tel' },
+  { k: 'planRescate', l: 'Indicaciones de mi psiquiatra / psicólogo para una crisis', t: 'textarea', ph: 'Copia acá lo que te indicaron, tal cual. Ej.: la dosis exacta del rescate que te confirme el psiquiatra.' },
+];
+async function vistaAjustes() {
+  const p = { ...perfil() };
+  $('#app').innerHTML = `<div class="top"><button class="btn chico borde" onclick="ir('hoy')">← Volver</button><h1 class="mb0">Ajustes</h1><span></span></div>
+  <div class="card">${htmlCampos(CAMPOS_PERFIL, p)}<button class="btn full mt" id="perf-ok">Guardar</button></div>
+  <div class="card"><h2>Contraseña</h2>
+    <label class="f">Actual</label><input class="i" type="password" id="pw-a">
+    <label class="f">Nueva</label><input class="i" type="password" id="pw-n">
+    <button class="btn full sec mt" id="pw-ok">Cambiar contraseña</button></div>
+  <div class="card"><h2>Instalar en el celular</h2>
+    <p class="mut">En Chrome: menú ⋮ → <b>Agregar a la pantalla principal</b>. En iPhone (Safari): compartir → <b>Agregar a inicio</b>. Queda como una app más.</p></div>
+  <button class="btn full borde" onclick="salir()">Cerrar sesión</button>
+  <p class="centro mut mt"><small>Vamos Pa' Arriba · I8A Project · ${esc(S.usuario.email)}</small></p>`;
+  $('#perf-ok').onclick = async () => {
+    const v = leerCampos(CAMPOS_PERFIL, document);
+    await guardarPerfil(v); toast('Guardado ✓');
+  };
+  $('#pw-ok').onclick = async () => {
+    try { await api('PATCH', '/api/password', { actual: $('#pw-a').value, nueva: $('#pw-n').value }); toast('Contraseña cambiada ✓'); $('#pw-a').value = $('#pw-n').value = ''; }
+    catch (e) { toast(e.message); }
+  };
+}
+
+/* =========================================================
+   INICIO
+   ========================================================= */
+async function iniciar() {
+  if (!S.token) return vistaLogin();
+  try {
+    if (!S.usuario) S.usuario = await api('GET', '/api/yo');
+  } catch (e) { return; }
+  $('#nav').classList.remove('oculto');
+  ir('hoy');
+}
+iniciar();
+</script>
+</body>
+</html>
