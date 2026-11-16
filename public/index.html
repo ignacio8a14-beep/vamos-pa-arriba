@@ -174,13 +174,46 @@ function vibrar(ms = 150) { try { navigator.vibrate && navigator.vibrate(ms); } 
 
 // Campanita suave (Web Audio, sin archivos)
 let audioCtx = null;
-function campana(frec = 528) {
+/* ---------- Voz guía (síntesis de voz del celular, sin archivos ni internet) ---------- */
+const HAY_VOZ = 'speechSynthesis' in window;
+let vozES = null;
+function elegirVoz() {
+  const vs = speechSynthesis.getVoices();
+  const norm = (l) => (l || '').replace('_', '-').toLowerCase();
+  for (const pref of ['es-ar', 'es-us', 'es-419', 'es-mx', 'es-es']) { const v = vs.find((x) => norm(x.lang) === pref); if (v) return v; }
+  return vs.find((x) => norm(x.lang).startsWith('es')) || null;
+}
+if (HAY_VOZ) { vozES = elegirVoz(); speechSynthesis.onvoiceschanged = () => { vozES = elegirVoz(); }; }
+const vozActiva = () => HAY_VOZ && perfil().voz !== false;
+function hablar(txt, { forzar = false } = {}) {
+  if (!HAY_VOZ || (!forzar && !vozActiva())) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(String(txt).replace(/<[^>]+>/g, ' '));
+    u.lang = vozES ? vozES.lang : 'es-ES';
+    if (vozES) u.voice = vozES;
+    u.rate = 0.82; u.pitch = 0.95; u.volume = 1;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function callar() { try { HAY_VOZ && speechSynthesis.cancel(); } catch (e) {} }
+// Botón 🔊/🔇 para las pantallas guiadas
+function botonVoz(fs) {
+  if (!HAY_VOZ) return;
+  const b = document.createElement('button');
+  b.className = 'cerrar'; b.style.left = '14px'; b.style.right = 'auto';
+  const pintar = () => (b.textContent = vozActiva() ? '🔊' : '🔇');
+  b.onclick = async (e) => { e.stopPropagation(); const on = !vozActiva(); if (!on) callar(); S.usuario.perfil.voz = on; pintar(); guardarPerfil({ voz: on }).catch(() => {}); };
+  pintar(); fs.appendChild(b);
+}
+
+function campana(frec = 528, vol = 0.25) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();
     o.type = 'sine'; o.frequency.value = frec;
     g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + 0.05);
+    g.gain.exponentialRampToValueAtTime(vol, audioCtx.currentTime + 0.05);
     g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 2.5);
     o.connect(g); g.connect(audioCtx.destination);
     o.start(); o.stop(audioCtx.currentTime + 2.6);
@@ -1874,7 +1907,7 @@ async function vistaCalma() {
       <p class="mut">Inhalas en 4 y exhalas en 6. Exhalar más largo le avisa al cuerpo que está a salvo.</p>
       <div class="fila wrap">${[2, 4, 6, 10].map((m) => `<button class="btn sec chico" data-resp="${m}">${m} min</button>`).join('')}</div></div>
     <div class="card"><h2>🧘 Meditación guiada</h2>
-      <p class="mut">Frases suaves que van apareciendo y una campanita al final. Si recién empiezas, prueba con 4 minutos.</p>
+      <p class="mut">${HAY_VOZ ? 'Una voz te guía para que puedas cerrar los ojos' : 'Frases suaves que van apareciendo'}, y una campanita al final. Si recién empiezas, prueba con 4 minutos.</p>
       <div class="fila wrap">${[4, 7, 10, 15].map((m) => `<button class="btn sec chico" data-med="${m}">${m} min</button>`).join('')}</div></div>
     <div class="card"><h2>⏱️ Silencio</h2>
       <p class="mut">Solo temporizador, sin texto. Campanita al inicio y al final.</p>
@@ -1976,21 +2009,32 @@ function respiracion(minutos, oscuro) {
   document.body.appendChild(fs);
   pantallaEncendida(true);
   const circ = $('#circ', fs);
+  botonVoz(fs);
+  let ciclos = 0;
+  // Para hacerlo con los ojos cerrados: la voz guía las primeras respiraciones y después un tono suave marca cada cambio
   const aplicar = () => {
     circ.style.transitionDuration = fase === 'in' ? '4s' : '6s';
     circ.style.transform = fase === 'in' ? 'scale(1.25)' : 'scale(0.8)';
     circ.textContent = fase === 'in' ? 'Inhala' : 'Exhala';
+    if (fase === 'in') ciclos++;
+    if (vozActiva() && ciclos <= 3) hablar(fase === 'in' ? 'Inhala' : ciclos === 3 ? 'Exhala lento. Ahora sigue los sonidos: agudo, inhalas. Grave, exhalas.' : 'Exhala lento');
+    else campana(fase === 'in' ? 528 : 396, 0.08);
   };
-  requestAnimationFrame(() => { circ.style.transform = 'scale(0.8)'; requestAnimationFrame(aplicar); });
+  // con voz, primero una indicación corta y después arranca la respiración
+  const espera = vozActiva() ? 3 : 0;
+  if (espera) { circ.textContent = 'Cierra los ojos'; hablar('Cierra los ojos. Vamos a respirar juntos.'); }
+  setTimeout(() => requestAnimationFrame(() => { circ.style.transform = 'scale(0.8)'; requestAnimationFrame(aplicar); }), espera * 1000);
+  let previa = espera;
   const iv = setInterval(async () => {
+    if (previa > 0) { previa--; return; }
     t++; ft++;
     const dur = fase === 'in' ? 4 : 6;
     if (ft >= dur) { fase = fase === 'in' ? 'out' : 'in'; ft = 0; aplicar(); }
     $('#cuenta', fs).textContent = (fase === 'in' ? 4 : 6) - ft;
     $('#rest', fs).textContent = mmss(total - t);
-    if (t >= total) { cerrar(); campana(); await registrarCalma('Respiración 4-6', minutos); }
+    if (t >= total) { cerrar(); campana(); hablar('Muy bien. Cuando quieras, abre los ojos.'); await registrarCalma('Respiración 4-6', minutos); }
   }, 1000);
-  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  function cerrar() { clearInterval(iv); callar(); pantallaEncendida(false); fs.remove(); }
   $('[data-x]', fs).onclick = async () => { cerrar(); if (t >= 60) await registrarCalma('Respiración 4-6', Math.round(t / 60)); };
 }
 
@@ -2002,22 +2046,27 @@ function meditar(minutos, guiada) {
   fs.className = 'full-screen calmo';
   document.body.appendChild(fs);
   pantallaEncendida(true); campana(432);
+  let ultimaDicha = -1;
   const pintar = () => {
-    const frase = guiada ? GUIA_MEDITACION[Math.min(GUIA_MEDITACION.length - 1, Math.floor(t / cada))] : '';
+    const i = Math.min(GUIA_MEDITACION.length - 1, Math.floor(t / cada));
+    const frase = guiada ? GUIA_MEDITACION[i] : '';
+    // la voz lee cada frase una sola vez: puedes tener los ojos cerrados
+    if (guiada && i !== ultimaDicha && !pausa) { ultimaDicha = i; setTimeout(() => hablar(frase), t === 0 ? 1800 : 0); }
     fs.innerHTML = `<button class="cerrar" data-x>✕</button>
-      ${guiada ? `<p class="paso-txt" style="min-height:5em">${esc(frase)}</p>` : '<p style="opacity:.8">Silencio</p>'}
+      ${guiada ? `<p class="paso-txt" style="min-height:5em">${esc(frase)}</p>${vozActiva() ? '<p style="opacity:.7;font-size:.85rem">🔊 Cierra los ojos: te guío con la voz.</p>' : ''}` : '<p style="opacity:.8">Silencio</p>'}
       <div class="reloj">${mmss(total - t)}</div>
       <button class="btn sec" data-p>${pausa ? '▶ Seguir' : '⏸ Pausa'}</button>`;
     $('[data-x]', fs).onclick = async () => { cerrar(); if (t >= 60) await registrarCalma(guiada ? 'Meditación guiada' : 'Silencio', Math.round(t / 60)); };
-    $('[data-p]', fs).onclick = () => { pausa = !pausa; pintar(); };
+    $('[data-p]', fs).onclick = () => { pausa = !pausa; if (pausa) callar(); pintar(); };
+    if (guiada) botonVoz(fs);
   };
   const iv = setInterval(async () => {
     if (pausa) return;
     t++;
-    if (t >= total) { cerrar(); campana(432); await registrarCalma(guiada ? 'Meditación guiada' : 'Silencio', minutos); return; }
+    if (t >= total) { cerrar(); campana(432); if (guiada) hablar('Muy bien. Mueve suavemente las manos y, cuando quieras, abre los ojos.'); await registrarCalma(guiada ? 'Meditación guiada' : 'Silencio', minutos); return; }
     if (guiada && t % cada === 0) pintar(); else { const r = $('.reloj', fs); if (r) r.textContent = mmss(total - t); }
   }, 1000);
-  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  function cerrar() { clearInterval(iv); callar(); pantallaEncendida(false); fs.remove(); }
   pintar();
 }
 
@@ -2088,8 +2137,11 @@ function oracionGuiada(momento) {
       let s = p.seg;
       const iv = setInterval(() => { s--; const el = $('#seg', fs); if (!el) return clearInterval(iv); el.textContent = s; if (s <= 0) { clearInterval(iv); el.textContent = '✓'; campana(432); } }, 1000);
     }
+    botonVoz(fs);
+    // la voz lee el paso (y tus oraciones) para que puedas rezar con los ojos cerrados
+    hablar(p.t + '. ' + (p.txt || '') + (p.oraciones ? ' ' + ors.map((o) => o.titulo + '. ' + o.texto).join('. ') : ''));
   };
-  function cerrar() { fs.remove(); }
+  function cerrar() { callar(); fs.remove(); }
   pintar();
 }
 
@@ -2128,14 +2180,16 @@ function rescate() {
     const ant = $('[data-ant]', fs); if (ant) ant.onclick = () => { i--; pintar(); };
     const sig = $('[data-sig]', fs); if (sig) sig.onclick = () => { i++; pintar(); };
     const reg = $('[data-reg]', fs); if (reg) reg.onclick = () => { cerrar(); formEpisodio(); };
+    botonVoz(fs);
+    if (!ps.resp) hablar(ps.h + '. ' + ps.txt.replace(/<br>/g, '. '));
     if (ps.resp) {
       const circ = $('#circ', fs); let fase = 'in', ft = 0;
-      const aplicar = () => { circ.style.transitionDuration = fase === 'in' ? '4s' : '6s'; circ.style.transform = fase === 'in' ? 'scale(1.25)' : 'scale(0.8)'; circ.textContent = fase === 'in' ? 'Inhala' : 'Exhala'; };
+      const aplicar = () => { circ.style.transitionDuration = fase === 'in' ? '4s' : '6s'; circ.style.transform = fase === 'in' ? 'scale(1.25)' : 'scale(0.8)'; circ.textContent = fase === 'in' ? 'Inhala' : 'Exhala'; hablar(fase === 'in' ? 'Inhala' : 'Exhala lento'); };
       requestAnimationFrame(() => { circ.style.transform = 'scale(0.8)'; requestAnimationFrame(aplicar); });
       iv = setInterval(() => { ft++; if (ft >= (fase === 'in' ? 4 : 6)) { fase = fase === 'in' ? 'out' : 'in'; ft = 0; aplicar(); } }, 1000);
     }
   };
-  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  function cerrar() { clearInterval(iv); callar(); pantallaEncendida(false); fs.remove(); }
   pintar();
 }
 
@@ -2370,6 +2424,8 @@ async function vistaAjustes() {
   <div class="card"><h2>Mi día</h2>
     <div class="check ${oracionOn ? 'ok' : ''}" id="aj-oracion"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🙏 Incluir momentos de oración</span></div>
     ${S.config.ia ? `<div class="check ${p.consentIA === true ? 'ok' : ''}" id="aj-ia"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">✨ Permitir funciones con IA (OpenAI)</span></div>` : ''}
+    ${HAY_VOZ ? `<div class="check ${p.voz !== false ? 'ok' : ''}" id="aj-voz"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🔊 Voz guía en meditación, respiración, oración y ansiedad</span></div>
+    <button class="btn chico borde" id="aj-voz-prueba" style="margin:4px 0 6px">▶ Probar la voz</button>` : ''}
     <button class="btn full sec mt" onclick="bienvenida().then(()=>ir('hoy'))">Ver de nuevo la bienvenida</button></div>
   <div class="card"><h2>Contraseña</h2>
     <label class="f">Actual</label><input class="i" type="password" id="pw-a" autocomplete="current-password">
@@ -2400,6 +2456,11 @@ async function vistaAjustes() {
     e.currentTarget.classList.toggle('ok');
     await guardarPerfil({ consentIA: e.currentTarget.classList.contains('ok') }); toast('Guardado ✓');
   };
+  const ajVoz = $('#aj-voz');
+  if (ajVoz) {
+    ajVoz.onclick = async (e) => { e.currentTarget.classList.toggle('ok'); await guardarPerfil({ voz: e.currentTarget.classList.contains('ok') }); toast('Guardado ✓'); };
+    $('#aj-voz-prueba').onclick = () => hablar('Hola. Esta es la voz que te va a acompañar. Respira tranquilo.', { forzar: true });
+  }
   $('#aj-oracion').onclick = async (e) => {
     e.currentTarget.classList.toggle('ok');
     await guardarPerfil({ oracion: e.currentTarget.classList.contains('ok') }); toast('Guardado ✓');
