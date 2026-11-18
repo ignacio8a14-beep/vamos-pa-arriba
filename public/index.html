@@ -677,7 +677,7 @@ function vistaLogin(modo = 'login') {
 
 function salir() {
   S.token = null; S.usuario = null; S.dias = {}; S.cache = {}; S.familia = null; S.miembros = [];
-  localStorage.removeItem('vpa_token');
+  localStorage.removeItem('vpa_token'); localStorage.removeItem(CLAVE_CAMINATA);
   document.querySelectorAll('.overlay,.full-screen').forEach((x) => x.remove());
   vistaLogin();
 }
@@ -1761,40 +1761,76 @@ async function vistaMover() {
   $('#ver-todas').onclick = (e) => { e.preventDefault(); S.sub.moverTodas = !todas; render(); };
 }
 
-function caminata(nivel) {
+// Cronómetro basado en la hora real: si apagas la pantalla o el celular congela la app,
+// al volver el tiempo sigue siendo el correcto. La caminata en curso se guarda en el teléfono.
+function reloj(estado) {
+  // estado: { inicio, pausadoMs, pausaDesde }
+  return {
+    seg: () => Math.max(0, Math.floor(((estado.pausaDesde || Date.now()) - estado.inicio - (estado.pausadoMs || 0)) / 1000)),
+    pausado: () => !!estado.pausaDesde,
+    alternar: () => {
+      if (estado.pausaDesde) { estado.pausadoMs = (estado.pausadoMs || 0) + (Date.now() - estado.pausaDesde); estado.pausaDesde = null; }
+      else estado.pausaDesde = Date.now();
+    },
+  };
+}
+const CLAVE_CAMINATA = 'vpa_caminata';
+function caminataGuardada() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CLAVE_CAMINATA) || 'null');
+    if (c && Date.now() - c.inicio < 6 * 3600000) return c; // más de 6 h: se descarta
+    localStorage.removeItem(CLAVE_CAMINATA);
+  } catch (e) {}
+  return null;
+}
+
+function caminata(nivel, retomada) {
   const meta = CAMINATA_MIN[nivel - 1] * 60;
-  let t = 0, pausa = false;
+  const estado = retomada || { nivel, inicio: Date.now(), pausadoMs: 0, pausaDesde: null };
+  const guardar = () => { try { localStorage.setItem(CLAVE_CAMINATA, JSON.stringify(estado)); } catch (e) {} };
+  guardar();
+  const rj = reloj(estado);
   const intervalos = nivel >= 4 ? [[60, 120], [120, 120], [120, 60]][nivel - 4] : null; // [rápido, normal]
   const fs = document.createElement('div');
   fs.className = 'full-screen';
   document.body.appendChild(fs);
   pantallaEncendida(true);
-  const fase = () => {
+  const fase = (t) => {
     if (!intervalos) return '';
     const ciclo = intervalos[0] + intervalos[1];
     return (t % ciclo) < intervalos[0] ? '🏃 Rápido' : '🚶 Normal';
   };
-  let ultFase = fase();
+  let ultFase = fase(rj.seg()), metaAvisada = rj.seg() >= meta;
   const pintar = () => {
+    const t = rj.seg();
     fs.innerHTML = `<button class="cerrar" data-x>✕</button>
       <h2>Caminata · nivel ${nivel}</h2>
-      ${intervalos ? `<div style="font-size:1.6rem;font-weight:700;margin-top:8px">${fase()}</div>` : `<p>${CAMINATA_TXT[nivel - 1]}</p>`}
+      ${intervalos ? `<div style="font-size:1.6rem;font-weight:700;margin-top:8px">${fase(t)}</div>` : `<p>${CAMINATA_TXT[nivel - 1]}</p>`}
       <div class="reloj">${mmss(t)}</div>
-      <p style="opacity:.85">Meta: ${mmss(meta)}</p>
+      <p style="opacity:.85">${t >= meta ? '🎉 ¡Meta cumplida! Puedes seguir o terminar.' : 'Meta: ' + mmss(meta)}</p>
       <div class="prog" style="width:80%;background:rgba(255,255,255,.25)"><div style="width:${Math.min(100, (t / meta) * 100)}%;background:#fff"></div></div>
-      <div class="fila mt" style="gap:10px"><button class="btn sec" data-p>${pausa ? '▶ Seguir' : '⏸ Pausa'}</button><button class="btn" data-fin>Terminar</button></div>`;
-    $('[data-x]', fs).onclick = cerrar;
-    $('[data-p]', fs).onclick = () => { pausa = !pausa; pintar(); };
-    $('[data-fin]', fs).onclick = () => { cerrar(); finSesion('Caminata', nivel, Math.max(1, Math.round(t / 60)), 'caminata'); };
+      <div class="fila mt" style="gap:10px"><button class="btn sec" data-p>${rj.pausado() ? '▶ Seguir' : '⏸ Pausa'}</button><button class="btn" data-fin>Terminar</button></div>
+      <p style="opacity:.7;font-size:.82rem;margin-top:18px;max-width:340px">Puedes apagar la pantalla y guardar el celular: el tiempo se sigue contando. ${intervalos ? 'Con la pantalla apagada no suenan los avisos de cambio de ritmo.' : ''}</p>`;
+    $('[data-x]', fs).onclick = () => { if (rj.seg() < 60 || confirm('¿Salir sin guardar la caminata?')) cerrar(); };
+    $('[data-p]', fs).onclick = () => { rj.alternar(); guardar(); pintar(); };
+    $('[data-fin]', fs).onclick = () => { const t = rj.seg(); cerrar(); finSesion('Caminata', nivel, Math.max(1, Math.round(t / 60)), 'caminata'); };
   };
-  const iv = setInterval(() => {
-    if (pausa) return;
-    t++;
-    const f = fase(); if (f !== ultFase) { ultFase = f; vibrar([200, 100, 200]); campana(f.includes('Rápido') ? 660 : 440); }
-    if (t === meta) { vibrar([300, 150, 300]); campana(); }
+  const tick = () => {
+    if (rj.pausado()) return;
+    const t = rj.seg();
+    const f = fase(t); if (f !== ultFase) { ultFase = f; vibrar([200, 100, 200]); campana(f.includes('Rápido') ? 660 : 440); }
+    if (!metaAvisada && t >= meta) { metaAvisada = true; vibrar([300, 150, 300]); campana(); }
     pintar();
-  }, 1000);
-  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
+  };
+  const iv = setInterval(tick, 1000);
+  // al volver a la app (pantalla encendida de nuevo), actualizar al instante y volver a pedir pantalla encendida
+  const alVolver = () => { if (document.visibilityState === 'visible') { pantallaEncendida(true); tick(); } };
+  document.addEventListener('visibilitychange', alVolver);
+  function cerrar() {
+    clearInterval(iv); document.removeEventListener('visibilitychange', alVolver);
+    try { localStorage.removeItem(CLAVE_CAMINATA); } catch (e) {}
+    pantallaEncendida(false); fs.remove();
+  }
   pintar();
 }
 
@@ -2040,6 +2076,7 @@ function respiracion(minutos, oscuro) {
 
 function meditar(minutos, guiada) {
   const total = minutos * 60;
+  const rj = reloj({ inicio: Date.now(), pausadoMs: 0, pausaDesde: null });
   let t = 0, pausa = false;
   const cada = Math.max(25, Math.floor(total / GUIA_MEDITACION.length));
   const fs = document.createElement('div');
@@ -2057,16 +2094,22 @@ function meditar(minutos, guiada) {
       <div class="reloj">${mmss(total - t)}</div>
       <button class="btn sec" data-p>${pausa ? '▶ Seguir' : '⏸ Pausa'}</button>`;
     $('[data-x]', fs).onclick = async () => { cerrar(); if (t >= 60) await registrarCalma(guiada ? 'Meditación guiada' : 'Silencio', Math.round(t / 60)); };
-    $('[data-p]', fs).onclick = () => { pausa = !pausa; if (pausa) callar(); pintar(); };
+    $('[data-p]', fs).onclick = () => { pausa = !pausa; rj.alternar(); if (pausa) callar(); pintar(); };
     if (guiada) botonVoz(fs);
   };
-  const iv = setInterval(async () => {
-    if (pausa) return;
-    t++;
-    if (t >= total) { cerrar(); campana(432); if (guiada) hablar('Muy bien. Mueve suavemente las manos y, cuando quieras, abre los ojos.'); await registrarCalma(guiada ? 'Meditación guiada' : 'Silencio', minutos); return; }
-    if (guiada && t % cada === 0) pintar(); else { const r = $('.reloj', fs); if (r) r.textContent = mmss(total - t); }
-  }, 1000);
-  function cerrar() { clearInterval(iv); callar(); pantallaEncendida(false); fs.remove(); }
+  // el tiempo sale de la hora real: si la pantalla se apaga, al volver sigue donde corresponde
+  let terminado = false;
+  const tick = async () => {
+    if (pausa || terminado) return;
+    t = Math.min(total, rj.seg());
+    if (t >= total) { terminado = true; cerrar(); campana(432); if (guiada) hablar('Muy bien. Mueve suavemente las manos y, cuando quieras, abre los ojos.'); await registrarCalma(guiada ? 'Meditación guiada' : 'Silencio', minutos); return; }
+    const i = Math.min(GUIA_MEDITACION.length - 1, Math.floor(t / cada));
+    if (guiada && i !== ultimaDicha) pintar(); else { const r = $('.reloj', fs); if (r) r.textContent = mmss(total - t); }
+  };
+  const iv = setInterval(tick, 1000);
+  const alVolver = () => { if (document.visibilityState === 'visible') { pantallaEncendida(true); tick(); } };
+  document.addEventListener('visibilitychange', alVolver);
+  function cerrar() { clearInterval(iv); document.removeEventListener('visibilitychange', alVolver); callar(); pantallaEncendida(false); fs.remove(); }
   pintar();
 }
 
@@ -2637,6 +2680,9 @@ async function iniciar() {
   if (location.pathname === '/admin' && S.usuario.admin) destino = 'admin';
   $('#nav').classList.remove('oculto');
   ir(destino);
+  // si había una caminata en curso (por ejemplo, el celular cerró la app), seguirla
+  const cg = caminataGuardada();
+  if (cg) { caminata(cg.nivel || 1, cg); toast('Seguimos con tu caminata 🚶'); }
 }
 window.addEventListener('hashchange', () => { if (/^#reset=/.test(location.hash)) { S.usuario = null; iniciar(); } });
 iniciar();
