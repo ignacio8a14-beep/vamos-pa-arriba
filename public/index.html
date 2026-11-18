@@ -888,7 +888,7 @@ function htmlCampo(c, datos) {
     if (c.t === 'subtitulo') return `<p class="mt mb0" style="font-weight:700;color:var(--verde);border-bottom:1px solid var(--borde);padding-bottom:4px">${c.l}</p>`;
     if (c.t === 'nota') return `<p class="mut mb0"><small>${c.l}</small></p>`;
     if (c.t === 'textarea') return `<label class="f">${c.l}</label><textarea class="i" id="${id}" placeholder="${esc(c.ph || '')}">${esc(v)}</textarea>`;
-    if (c.t === 'select') return `<label class="f">${c.l}</label><select class="i" id="${id}">${c.op.map((o) => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+    if (c.t === 'select') return `<label class="f">${c.l}</label><select class="i" id="${id}">${c.ph ? `<option value="" ${v ? '' : 'selected'}>${esc(c.ph)}</option>` : ''}${c.op.map((o) => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
     if (c.t === 'check') return `<label class="check ${v ? 'ok' : ''}" style="border:none" onclick="this.classList.toggle('ok')" data-k="${c.k}" id="${id}"><span class="caja">✓</span><span>${c.l}</span></label>`;
     if (c.t === 'escala') return `<label class="f">${c.l}</label><div class="fila" id="${id}" data-v="${esc(v)}">${c.op.map((o, i) => `<button type="button" class="emo ${String(v) === String(i + 1) ? 'on' : ''}" data-i="${i + 1}" onclick="this.parentNode.dataset.v=this.dataset.i;[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this))">${o}</button>`).join('')}</div>`;
     const step = c.t === 'number' ? 'step="any" inputmode="decimal"' : '';
@@ -1032,12 +1032,20 @@ async function leerConIA(cuerpo, boton, alResultado) {
   boton.disabled = false; boton.textContent = txt;
 }
 // Vuelca lo que leyó la IA en el formulario de estudio
+// Valores del informe que no tienen campo propio (hormonas, vitaminas, orina, medidas…)
+function pintarOtros(o) {
+  const caja = $('[data-otros]', o); if (!caja) return;
+  const otros = (o._extraIA || {}).otros || [];
+  caja.innerHTML = otros.length ? `<h3 class="mt">Otros valores del informe</h3><table class="val">${otros.map((x, i) => `<tr><td>${esc(x.n)}${x.ref ? `<br><small class="mut">ref. ${esc(x.ref)}</small>` : ''}</td><td><b>${esc(x.v)}</b> ${esc(x.u || '')}</td><td><button class="btn chico borde" data-quitar-otro="${i}" title="Quitar">✕</button></td></tr>`).join('')}</table>` : '';
+  caja.querySelectorAll('[data-quitar-otro]').forEach((b) => (b.onclick = () => { otros.splice(Number(b.dataset.quitarOtro), 1); pintarOtros(o); }));
+}
+
 function llenarConIA(o, r) {
   const marcar = (el) => { el.classList.add('ia-lleno'); };
   const sel = $('#c_tipo', o);
   if (r.tipo === 'inbody') sel.value = 'Composición corporal (InBody)';
   else if (r.tipo === 'analisis') sel.value = 'Análisis de sangre';
-  else if (r.estudio) sel.value = r.estudio;
+  else sel.value = r.estudio || 'Otro';
   marcar(sel);
   sel.onchange && sel.onchange();
   let n = 0;
@@ -1049,7 +1057,9 @@ function llenarConIA(o, r) {
   if (res && r.resumen) { res.value = r.resumen; marcar(res); res.style.minHeight = '180px'; }
   else if (res && r.notas && !res.value) { res.value = 'Otros valores: ' + r.notas; marcar(res); }
   const ori = $('#c_orina', o); if (r.orina && ori) { ori.value = r.orina; marcar(ori); }
-  o._extraIA = { refs: { ...((o._extraIA || {}).refs || {}), ...(r.refs || {}) } };
+  o._extraIA = { ...(o._extraIA || {}), refs: { ...((o._extraIA || {}).refs || {}), ...(r.refs || {}) }, otros: r.otros && r.otros.length ? r.otros : ((o._extraIA || {}).otros || []) };
+  pintarOtros(o);
+  n += (r.otros || []).length;
   const aviso = $('[data-aviso-ia]', o);
   const quedan = r.restantes >= 0 ? ` Te quedan ${r.restantes} lecturas este mes.` : '';
   if (aviso) aviso.innerHTML = n
@@ -1076,15 +1086,19 @@ function formRegistro(tipo, titulo, campos, existente, alGuardar) {
   const conAdj = CON_ADJUNTOS.includes(tipo);
   modal(`
     <div class="fila entre"><h2 class="mb0">${titulo}</h2><button class="btn chico borde" data-x>✕</button></div>
-    ${htmlCampos(todos, datos)}
-    ${conAdj ? HTML_CAJA_ADJUNTOS : ''}
-    ${tipo === 'estudio' && S.config.ia ? '<p class="mut mt mb0"><small>✨ Adjunta el PDF o una foto del informe y toca <b>Leer</b> para que la IA complete los valores.</small></p>' : ''}
+    ${conAdj ? (tipo === 'estudio' && S.config.ia
+      ? HTML_CAJA_ADJUNTOS.replace('<h3>📎 Archivos</h3>', '<h3>📎 ¿Tienes el informe?</h3><p class="mb0" style="font-size:.92rem">Adjunta el PDF o una foto y toca <b>✨ Leer</b>: la IA completa los datos por ti.</p>')
+      : HTML_CAJA_ADJUNTOS) : ''}
     <div data-aviso-ia></div>
+    ${htmlCampos(todos, datos)}
+    <div data-otros></div>
     <button class="btn full mt" data-ok>Guardar</button>
     ${existente ? `<button class="btn full mt borde" data-del style="color:var(--rojo)">Borrar</button>` : ''}
   `, (o) => {
     const adj = conAdj ? cajaAdjuntos(o, existente ? { registro_id: existente.id } : null,
       tipo === 'estudio' && S.config.ia ? { alLeerIA: (r) => llenarConIA(o, r) } : {}) : null;
+    o._extraIA = existente && existente.datos.otros ? { otros: [...existente.datos.otros] } : {};
+    pintarOtros(o);
     const selTipo = $('#c_tipo', o);
     const grupos = () => {
       if (!selTipo) return;
@@ -1094,6 +1108,7 @@ function formRegistro(tipo, titulo, campos, existente, alGuardar) {
     $('[data-x]', o).onclick = () => o.remove();
     $('[data-ok]', o).onclick = async () => {
       const v = leerCampos(todos, o);
+      if (selTipo && !v.tipo) { toast('Elige el tipo de estudio'); selTipo.focus(); return; }
       // no guardar valores de grupos ocultos (ej.: campos de InBody en un análisis de sangre)
       if (selTipo) todos.forEach((c) => { if (c.g && GRUPO_POR_TIPO[c.g] !== v.tipo) delete v[c.k]; });
       const fecha = v.fecha || hoyStr(); delete v.fecha;
@@ -2292,7 +2307,7 @@ const CAMPOS = {
   ],
   estudio: [
     { k: 'titulo', l: 'Nombre del estudio (opcional)', t: 'text', ph: 'Ej.: Ecografía testicular y prostática' },
-    { k: 'tipo', l: 'Tipo de estudio', t: 'select', op: ['Análisis de sangre', 'Composición corporal (InBody)', 'Ecocardiograma', 'Electrocardiograma', 'Ecografía', 'Estudio del sueño', 'Imagen (RX, TAC, RMN)', 'Otro'] },
+    { k: 'tipo', l: 'Tipo de estudio', t: 'select', ph: 'Elige el tipo de estudio…', op: ['Análisis de sangre', 'Análisis de orina', 'Composición corporal (InBody)', 'Ecografía', 'Ecocardiograma', 'Electrocardiograma', 'Ergometría / prueba de esfuerzo', 'Holter / MAPA (presión 24 h)', 'Imagen (RX, TAC, RMN)', 'Endoscopía / colonoscopía', 'Densitometría ósea', 'Espirometría', 'Estudio del sueño', 'Biopsia / anatomía patológica', 'Control oftalmológico', 'Otro'] },
     { k: 'lugar', l: 'Lugar / laboratorio', t: 'text' },
     { t: 'titulo', l: 'Valores del análisis', g: 'lab' },
     { t: 'nota', l: 'Completa solo los que figuran en tu informe. Los demás déjalos vacíos.', g: 'lab' },
@@ -2369,8 +2384,8 @@ async function vistaSalud() {
         if (perfil().edad) L.push(`Edad: ${perfil().edad} · Altura: ${perfil().altura || '?'} cm`);
         if (p) L.push(`Peso: ${p.datos.peso} kg${p.datos.cintura ? ' · Cintura: ' + p.datos.cintura + ' cm' : ''}${p.datos.presion ? ' · Presión: ' + p.datos.presion : ''} (${fechaCorta(p.fecha)})`);
         if (uib) { L.push(`\nÚltimo InBody (${fechaCorta(uib.fecha)}):`); INBODY.forEach((v) => uib.datos[v.k] != null && L.push(`• ${v.n}: ${uib.datos[v.k]} ${v.u}`)); }
-        est.filter((r) => !ES_INBODY(r) && r.datos.tipo !== 'Análisis de sangre' && r.datos.resultado).slice(0, 4).forEach((r) => L.push(`\n${r.datos.titulo || r.datos.tipo} (${fechaCorta(r.fecha)}):\n${r.datos.resultado}`));
-        if (ult) { L.push(`\nÚltimo análisis (${fechaCorta(ult.fecha)}):`); LAB.forEach((v) => ult.datos[v.k] != null && L.push(`• ${v.n}: ${ult.datos[v.k]} ${v.u}${(ult.datos.refs || {})[v.k] ? ` (ref.: ${ult.datos.refs[v.k]})` : ''}`)); if (ult.datos.orina) L.push(`• Orina: ${ult.datos.orina}`); }
+        est.filter((r) => !ES_INBODY(r) && r.datos.tipo !== 'Análisis de sangre' && (r.datos.resultado || (r.datos.otros || []).length)).slice(0, 4).forEach((r) => L.push(`\n${r.datos.titulo || r.datos.tipo} (${fechaCorta(r.fecha)}):` + (r.datos.resultado ? `\n${r.datos.resultado}` : '') + (r.datos.otros || []).map((x) => `\n• ${x.n}: ${x.v} ${x.u || ''}${x.ref ? ` (ref.: ${x.ref})` : ''}`).join('')));
+        if (ult) { L.push(`\nÚltimo análisis (${fechaCorta(ult.fecha)}):`); LAB.forEach((v) => ult.datos[v.k] != null && L.push(`• ${v.n}: ${ult.datos[v.k]} ${v.u}${(ult.datos.refs || {})[v.k] ? ` (ref.: ${ult.datos.refs[v.k]})` : ''}`)); if (ult.datos.orina) L.push(`• Orina: ${ult.datos.orina}`); (ult.datos.otros || []).forEach((x) => L.push(`• ${x.n}: ${x.v} ${x.u || ''}${x.ref ? ` (ref.: ${x.ref})` : ''}`)); }
         if (s14.length) {
           L.push(`\nSueño (últimas ${s14.length} noches registradas):`);
           if (hs.length) L.push(`• Horas promedio: ${prom(hs).toFixed(1)}`);

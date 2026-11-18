@@ -567,10 +567,10 @@ const CAMPOS_IA = {
   ib_peso: 'InBody: peso (kg)', ib_musculo: 'InBody: masa muscular esquelética (kg)', ib_grasa_kg: 'InBody: masa grasa corporal (kg)', ib_grasa_pct: 'InBody: porcentaje de grasa corporal (%)',
   ib_visceral: 'InBody: nivel de grasa visceral', ib_agua: 'InBody: agua corporal total (L)', ib_imc: 'InBody: IMC', ib_metab: 'InBody: metabolismo basal (kcal)', ib_puntaje: 'InBody: puntaje InBody',
 };
-const TIPOS_ESTUDIO = ['Análisis de sangre', 'Composición corporal (InBody)', 'Ecocardiograma', 'Electrocardiograma', 'Ecografía', 'Estudio del sueño', 'Imagen (RX, TAC, RMN)', 'Otro'];
+const TIPOS_ESTUDIO = ['Análisis de sangre', 'Análisis de orina', 'Composición corporal (InBody)', 'Ecografía', 'Ecocardiograma', 'Electrocardiograma', 'Ergometría / prueba de esfuerzo', 'Holter / MAPA (presión 24 h)', 'Imagen (RX, TAC, RMN)', 'Endoscopía / colonoscopía', 'Densitometría ósea', 'Espirometría', 'Estudio del sueño', 'Biopsia / anatomía patológica', 'Control oftalmológico', 'Otro'];
 const ESQUEMA_IA = {
   type: 'object', additionalProperties: false,
-  required: ['tipo', 'estudio', 'titulo', 'resumen', 'fecha', 'lugar', 'valores', 'referencias', 'orina', 'notas'],
+  required: ['tipo', 'estudio', 'titulo', 'resumen', 'fecha', 'lugar', 'valores', 'referencias', 'otros_valores', 'orina', 'notas'],
   properties: {
     tipo: { type: 'string', enum: ['inbody', 'analisis', 'otro'] },
     estudio: { type: 'string', enum: TIPOS_ESTUDIO, description: 'Categoría del estudio' },
@@ -586,6 +586,16 @@ const ESQUEMA_IA = {
       type: 'array', description: 'Valor de referencia que imprime el laboratorio para cada valor encontrado',
       items: { type: 'object', additionalProperties: false, required: ['clave', 'texto'],
         properties: { clave: { type: 'string', enum: Object.keys(CAMPOS_IA) }, texto: { type: 'string', description: 'Ej.: "hasta 200", "70 a 110", "0,80 a 1,40"' } } },
+    },
+    otros_valores: {
+      type: 'array', description: 'Todos los demás valores medidos del informe que NO tienen un campo en "valores" (por ejemplo hormonas, vitaminas, marcadores, valores de orina, medidas de una ecografía, presión arterial de un MAPA)',
+      items: { type: 'object', additionalProperties: false, required: ['nombre', 'valor', 'unidad', 'referencia'],
+        properties: {
+          nombre: { type: 'string' },
+          valor: { type: 'string', description: 'Tal como figura, con coma o punto decimal (ej.: "4,2", "negativo", "1.020")' },
+          unidad: { type: ['string', 'null'] },
+          referencia: { type: ['string', 'null'], description: 'Valor de referencia del laboratorio, si figura' },
+        } },
     },
     orina: { type: ['string', 'null'], description: 'Si hay examen de orina, resumen corto de lo que dice (ej.: "Densidad 1.010, pH 6, sin proteínas ni glucosa, sedimento sin particularidades"), o null' },
     notas: { type: ['string', 'null'], description: 'Otros valores numéricos del informe que no están en la lista, en una línea corta, o null' },
@@ -605,6 +615,8 @@ Reglas:
 - "Glucemia" es la glucosa en ayunas. "Uremia" es la urea. "Segmentados" son los neutrófilos.
 - En referencias, copia el valor de referencia que el laboratorio imprime al lado de cada valor que encontraste (adultos), tal como está.
 - tipo: "inbody" si es un informe de composición corporal (InBody u otro bioimpedanciómetro), "analisis" si es un análisis de sangre, "otro" en cualquier otro caso.
+- Si el estudio no encaja en ninguna categoría, usa "Otro" y pon su nombre real en "titulo". Nunca lo clasifiques como análisis de sangre si no lo es.
+- En "otros_valores" incluye cada valor medido que no tenga campo propio en "valores", con su unidad y referencia. No repitas los que ya pusiste en "valores".
 - estudio: la categoría que mejor corresponda (una ecografía de cualquier zona es "Ecografía"; un ecocardiograma o eco doppler cardíaco es "Ecocardiograma"; radiografías, tomografías y resonancias son "Imagen (RX, TAC, RMN)").
 - Si es otro estudio (ecografía, ecocardiograma, electrocardiograma, imagen, estudio del sueño, etc.), en "resumen" copia los hallazgos y la conclusión tal como los escribió el profesional, una línea por hallazgo, con sus medidas. No agregues opiniones, explicaciones ni diagnósticos propios. No incluyas nombres, documentos ni datos personales del paciente.
 - No interpretes ni des recomendaciones médicas: solo transcribe.`;
@@ -672,6 +684,9 @@ app.post('/api/ia/leer', auth, wrap(async (req, res) => {
     tipo: datos.tipo, valores, refs,
     estudio: TIPOS_ESTUDIO.includes(datos.estudio) ? datos.estudio : null,
     titulo: datos.titulo ? String(datos.titulo).slice(0, 100) : null,
+    otros: (Array.isArray(datos.otros_valores) ? datos.otros_valores : []).slice(0, 80)
+      .filter((x) => x && x.nombre && x.valor !== undefined && x.valor !== null && String(x.valor).trim() !== '')
+      .map((x) => ({ n: String(x.nombre).slice(0, 80), v: String(x.valor).slice(0, 40), u: x.unidad ? String(x.unidad).slice(0, 20) : '', ref: x.referencia ? String(x.referencia).slice(0, 60) : '' })),
     resumen: datos.resumen ? String(datos.resumen).slice(0, 2000) : null,
     orina: datos.orina ? String(datos.orina).slice(0, 400) : null,
     fecha: FECHA_RE.test(datos.fecha || '') ? datos.fecha : null,
