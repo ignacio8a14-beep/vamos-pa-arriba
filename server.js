@@ -567,11 +567,15 @@ const CAMPOS_IA = {
   ib_peso: 'InBody: peso (kg)', ib_musculo: 'InBody: masa muscular esquelética (kg)', ib_grasa_kg: 'InBody: masa grasa corporal (kg)', ib_grasa_pct: 'InBody: porcentaje de grasa corporal (%)',
   ib_visceral: 'InBody: nivel de grasa visceral', ib_agua: 'InBody: agua corporal total (L)', ib_imc: 'InBody: IMC', ib_metab: 'InBody: metabolismo basal (kcal)', ib_puntaje: 'InBody: puntaje InBody',
 };
+const TIPOS_ESTUDIO = ['Análisis de sangre', 'Composición corporal (InBody)', 'Ecocardiograma', 'Electrocardiograma', 'Ecografía', 'Estudio del sueño', 'Imagen (RX, TAC, RMN)', 'Otro'];
 const ESQUEMA_IA = {
   type: 'object', additionalProperties: false,
-  required: ['tipo', 'fecha', 'lugar', 'valores', 'referencias', 'orina', 'notas'],
+  required: ['tipo', 'estudio', 'titulo', 'resumen', 'fecha', 'lugar', 'valores', 'referencias', 'orina', 'notas'],
   properties: {
     tipo: { type: 'string', enum: ['inbody', 'analisis', 'otro'] },
+    estudio: { type: 'string', enum: TIPOS_ESTUDIO, description: 'Categoría del estudio' },
+    titulo: { type: ['string', 'null'], description: 'Nombre del estudio tal como figura en el informe, corto (ej.: "Ecografía testicular y prostática-vesical"), o null' },
+    resumen: { type: ['string', 'null'], description: 'Solo para estudios que NO son análisis de sangre ni InBody: los hallazgos y conclusiones del informe transcriptos fielmente, una línea por hallazgo empezando con "• ", con sus medidas. Para análisis o InBody: null' },
     fecha: { type: ['string', 'null'], description: 'Fecha del estudio en formato YYYY-MM-DD, o null' },
     lugar: { type: ['string', 'null'], description: 'Laboratorio o centro, o null' },
     valores: {
@@ -601,6 +605,8 @@ Reglas:
 - "Glucemia" es la glucosa en ayunas. "Uremia" es la urea. "Segmentados" son los neutrófilos.
 - En referencias, copia el valor de referencia que el laboratorio imprime al lado de cada valor que encontraste (adultos), tal como está.
 - tipo: "inbody" si es un informe de composición corporal (InBody u otro bioimpedanciómetro), "analisis" si es un análisis de sangre, "otro" en cualquier otro caso.
+- estudio: la categoría que mejor corresponda (una ecografía de cualquier zona es "Ecografía"; un ecocardiograma o eco doppler cardíaco es "Ecocardiograma"; radiografías, tomografías y resonancias son "Imagen (RX, TAC, RMN)").
+- Si es otro estudio (ecografía, ecocardiograma, electrocardiograma, imagen, estudio del sueño, etc.), en "resumen" copia los hallazgos y la conclusión tal como los escribió el profesional, una línea por hallazgo, con sus medidas. No agregues opiniones, explicaciones ni diagnósticos propios. No incluyas nombres, documentos ni datos personales del paciente.
 - No interpretes ni des recomendaciones médicas: solo transcribe.`;
 
 app.post('/api/ia/leer', auth, wrap(async (req, res) => {
@@ -664,6 +670,9 @@ app.post('/api/ia/leer', auth, wrap(async (req, res) => {
   (datos.referencias || []).forEach((x) => { if (x && CAMPOS_IA[x.clave] && x.texto) refs[x.clave] = String(x.texto).slice(0, 60); });
   res.json({
     tipo: datos.tipo, valores, refs,
+    estudio: TIPOS_ESTUDIO.includes(datos.estudio) ? datos.estudio : null,
+    titulo: datos.titulo ? String(datos.titulo).slice(0, 100) : null,
+    resumen: datos.resumen ? String(datos.resumen).slice(0, 2000) : null,
     orina: datos.orina ? String(datos.orina).slice(0, 400) : null,
     fecha: FECHA_RE.test(datos.fecha || '') ? datos.fecha : null,
     lugar: datos.lugar ? String(datos.lugar).slice(0, 80) : null,

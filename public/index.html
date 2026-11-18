@@ -1037,18 +1037,26 @@ function llenarConIA(o, r) {
   const sel = $('#c_tipo', o);
   if (r.tipo === 'inbody') sel.value = 'Composición corporal (InBody)';
   else if (r.tipo === 'analisis') sel.value = 'Análisis de sangre';
+  else if (r.estudio) sel.value = r.estudio;
+  marcar(sel);
   sel.onchange && sel.onchange();
   let n = 0;
+  const tit = $('#c_titulo', o); if (r.titulo && tit && !tit.value) { tit.value = r.titulo; marcar(tit); }
   Object.entries(r.valores || {}).forEach(([k, v]) => { const el = $('#c_' + k, o); if (el) { el.value = v; marcar(el); n++; } });
   if (r.fecha) { const f = $('#c_fecha', o); f.value = r.fecha; marcar(f); }
   const lugar = $('#c_lugar', o); if (r.lugar && lugar && !lugar.value) { lugar.value = r.lugar; marcar(lugar); }
-  const res = $('#c_resultado', o); if (r.notas && res && !res.value) { res.value = 'Otros valores: ' + r.notas; marcar(res); }
+  const res = $('#c_resultado', o);
+  if (res && r.resumen) { res.value = r.resumen; marcar(res); res.style.minHeight = '180px'; }
+  else if (res && r.notas && !res.value) { res.value = 'Otros valores: ' + r.notas; marcar(res); }
   const ori = $('#c_orina', o); if (r.orina && ori) { ori.value = r.orina; marcar(ori); }
   o._extraIA = { refs: { ...((o._extraIA || {}).refs || {}), ...(r.refs || {}) } };
   const aviso = $('[data-aviso-ia]', o);
+  const quedan = r.restantes >= 0 ? ` Te quedan ${r.restantes} lecturas este mes.` : '';
   if (aviso) aviso.innerHTML = n
-    ? `<div class="nota" style="border-color:var(--verde)">✨ La IA completó <b>${n} valores</b> (resaltados). <b>Revísalos con el informe</b> antes de guardar.${r.restantes >= 0 ? ` Te quedan ${r.restantes} lecturas este mes.` : ''}</div>`
-    : `<div class="nota">La IA no encontró valores de InBody ni de análisis de sangre en este archivo. Puedes cargarlos a mano.</div>`;
+    ? `<div class="nota" style="border-color:var(--verde)">✨ La IA completó <b>${n} valores</b> (resaltados). <b>Revísalos con el informe</b> antes de guardar.${quedan}</div>`
+    : r.resumen
+      ? `<div class="nota" style="border-color:var(--verde)">✨ La IA completó el tipo, la fecha y <b>los hallazgos del informe</b> (resaltados). Revísalos antes de guardar.${quedan}</div>`
+      : `<div class="nota">La IA no encontró datos para completar en este archivo. Puedes cargarlos a mano.</div>`;
   aviso && aviso.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
@@ -2283,6 +2291,7 @@ const CAMPOS = {
     { k: 'presion', l: 'Presión arterial (si te la tomaste)', t: 'text', ph: 'Ej.: 120/80' },
   ],
   estudio: [
+    { k: 'titulo', l: 'Nombre del estudio (opcional)', t: 'text', ph: 'Ej.: Ecografía testicular y prostática' },
     { k: 'tipo', l: 'Tipo de estudio', t: 'select', op: ['Análisis de sangre', 'Composición corporal (InBody)', 'Ecocardiograma', 'Electrocardiograma', 'Ecografía', 'Estudio del sueño', 'Imagen (RX, TAC, RMN)', 'Otro'] },
     { k: 'lugar', l: 'Lugar / laboratorio', t: 'text' },
     { t: 'titulo', l: 'Valores del análisis', g: 'lab' },
@@ -2295,7 +2304,7 @@ const CAMPOS = {
     { k: 'orina', l: 'Examen de orina (resumen)', t: 'textarea', g: 'lab', ph: 'Ej.: sin proteínas ni glucosa, sedimento normal' },
     { t: 'titulo', l: 'Valores del InBody', g: 'inbody' },
     ...INBODY.map((v) => ({ k: v.k, l: v.n + (v.u ? ` (${v.u})` : ''), t: 'number', g: 'inbody' })),
-    { k: 'resultado', l: 'Resultado / conclusión del informe', t: 'textarea' },
+    { k: 'resultado', l: 'Hallazgos / conclusión del informe', t: 'textarea', ph: 'Lo que dice el informe' },
   ],
 };
 const TITULOS = { consulta: 'Consulta médica', psicologo: 'Sesión con el psicólogo', sueno: 'Noche de sueño', peso: 'Peso y medidas', estudio: 'Estudio' };
@@ -2360,6 +2369,7 @@ async function vistaSalud() {
         if (perfil().edad) L.push(`Edad: ${perfil().edad} · Altura: ${perfil().altura || '?'} cm`);
         if (p) L.push(`Peso: ${p.datos.peso} kg${p.datos.cintura ? ' · Cintura: ' + p.datos.cintura + ' cm' : ''}${p.datos.presion ? ' · Presión: ' + p.datos.presion : ''} (${fechaCorta(p.fecha)})`);
         if (uib) { L.push(`\nÚltimo InBody (${fechaCorta(uib.fecha)}):`); INBODY.forEach((v) => uib.datos[v.k] != null && L.push(`• ${v.n}: ${uib.datos[v.k]} ${v.u}`)); }
+        est.filter((r) => !ES_INBODY(r) && r.datos.tipo !== 'Análisis de sangre' && r.datos.resultado).slice(0, 4).forEach((r) => L.push(`\n${r.datos.titulo || r.datos.tipo} (${fechaCorta(r.fecha)}):\n${r.datos.resultado}`));
         if (ult) { L.push(`\nÚltimo análisis (${fechaCorta(ult.fecha)}):`); LAB.forEach((v) => ult.datos[v.k] != null && L.push(`• ${v.n}: ${ult.datos[v.k]} ${v.u}${(ult.datos.refs || {})[v.k] ? ` (ref.: ${ult.datos.refs[v.k]})` : ''}`)); if (ult.datos.orina) L.push(`• Orina: ${ult.datos.orina}`); }
         if (s14.length) {
           L.push(`\nSueño (últimas ${s14.length} noches registradas):`);
@@ -2387,7 +2397,7 @@ async function vistaSalud() {
   } else {
     const regs = await registros(sub);
     const linea = {
-      estudio: (r) => `<b>${esc(r.datos.tipo)}</b>${r.datos.lugar ? ' · ' + esc(r.datos.lugar) : ''}${r.adjuntos ? ` <span class="badge">📎 ${r.adjuntos}</span>` : ''}<br><small>${r.datos.resultado ? esc(r.datos.resultado.slice(0, 100))
+      estudio: (r) => `<b>${esc(r.datos.titulo || r.datos.tipo)}</b>${r.datos.lugar ? ' · ' + esc(r.datos.lugar) : ''}${r.adjuntos ? ` <span class="badge">📎 ${r.adjuntos}</span>` : ''}<br><small>${r.datos.resultado ? esc(r.datos.resultado.slice(0, 100))
         : ES_INBODY(r) ? [r.datos.ib_peso != null && `Peso ${r.datos.ib_peso} kg`, r.datos.ib_grasa_pct != null && `Grasa ${r.datos.ib_grasa_pct}%`, r.datos.ib_musculo != null && `Músculo ${r.datos.ib_musculo} kg`].filter(Boolean).join(' · ')
         : (() => { const vs = LAB.filter((v) => r.datos[v.k] != null); return vs.slice(0, 5).map((v) => v.n.split(' (')[0] + ' ' + r.datos[v.k]).join(' · ') + (vs.length > 5 ? ` · y ${vs.length - 5} valores más` : ''); })()}</small>`,
       consulta: (r) => `<b>${esc(r.datos.especialidad)}</b>${r.datos.profesional ? ' · ' + esc(r.datos.profesional) : ''}${r.adjuntos ? ` <span class="badge">📎 ${r.adjuntos}</span>` : ''}<br><small>${esc((r.datos.dijo || r.datos.motivo || '').slice(0, 100))}</small>`,
