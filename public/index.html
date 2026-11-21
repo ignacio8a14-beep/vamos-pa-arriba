@@ -184,26 +184,46 @@ function elegirVoz() {
   return vs.find((x) => norm(x.lang).startsWith('es')) || null;
 }
 if (HAY_VOZ) { vozES = elegirVoz(); speechSynthesis.onvoiceschanged = () => { vozES = elegirVoz(); }; }
-const vozActiva = () => HAY_VOZ && perfil().voz !== false;
-function hablar(txt, { forzar = false } = {}) {
+// S.silencio: el botón 🔇 calla solo la sesión actual (no cambia el ajuste general)
+// La voz solo se considera apagada si se apagó desde Ajustes (antes el botón 🔇 la apagaba para siempre por error)
+const vozApagada = () => perfil().voz === false && perfil().vozAjustes === true;
+const vozActiva = () => HAY_VOZ && !vozApagada() && !S.silencio;
+let avisoVozDado = false;
+function avisarFalloVoz() {
+  if (avisoVozDado) return; avisoVozDado = true;
+  toast('No se pudo reproducir la voz. Revisa en el celular: Ajustes → Texto a voz, que haya una voz en español.');
+}
+// Llamar dentro de un toque del usuario: algunos celulares solo habilitan la voz así
+function desbloquearVoz() {
+  S.silencio = false;
+  if (!HAY_VOZ) return;
+  try { if (!vozES) vozES = elegirVoz(); const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {}
+}
+function hablar(txt, { forzar = false, vol = 1, rapido = false } = {}) {
   if (!HAY_VOZ || (!forzar && !vozActiva())) return;
   try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(String(txt).replace(/<[^>]+>/g, ' '));
-    u.lang = vozES ? vozES.lang : 'es-ES';
-    if (vozES) u.voice = vozES;
-    u.rate = 0.82; u.pitch = 0.95; u.volume = 1;
-    speechSynthesis.speak(u);
-  } catch (e) {}
+    if (!vozES) vozES = elegirVoz();
+    const decir = () => {
+      const u = new SpeechSynthesisUtterance(String(txt).replace(/<[^>]+>/g, ' '));
+      u.lang = vozES ? vozES.lang : 'es-ES';
+      if (vozES) u.voice = vozES;
+      u.rate = rapido ? 1 : 0.82; u.pitch = 0.95; u.volume = vol;
+      u.onerror = (e) => { if (e && e.error && !['interrupted', 'canceled'].includes(e.error)) avisarFalloVoz(); };
+      speechSynthesis.speak(u);
+      if (speechSynthesis.paused) speechSynthesis.resume();
+    };
+    // En Android, hablar justo después de cancelar a veces se pierde: se espera un instante
+    if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); setTimeout(decir, 150); } else decir();
+  } catch (e) { avisarFalloVoz(); }
 }
 function callar() { try { HAY_VOZ && speechSynthesis.cancel(); } catch (e) {} }
-// Botón 🔊/🔇 para las pantallas guiadas
+// Botón 🔊/🔇 para las pantallas guiadas (solo para esta sesión)
 function botonVoz(fs) {
-  if (!HAY_VOZ) return;
+  if (!HAY_VOZ || vozApagada()) return;
   const b = document.createElement('button');
   b.className = 'cerrar'; b.style.left = '14px'; b.style.right = 'auto';
   const pintar = () => (b.textContent = vozActiva() ? '🔊' : '🔇');
-  b.onclick = async (e) => { e.stopPropagation(); const on = !vozActiva(); if (!on) callar(); S.usuario.perfil.voz = on; pintar(); guardarPerfil({ voz: on }).catch(() => {}); };
+  b.onclick = (e) => { e.stopPropagation(); S.silencio = !S.silencio; if (S.silencio) callar(); pintar(); };
   pintar(); fs.appendChild(b);
 }
 
@@ -1810,6 +1830,7 @@ function caminataGuardada() {
 function caminata(nivel, retomada) {
   const meta = CAMINATA_MIN[nivel - 1] * 60;
   const estado = retomada || { nivel, inicio: Date.now(), pausadoMs: 0, pausaDesde: null };
+  if (!retomada) { desbloquearVoz(); setTimeout(() => hablar(`Empezamos la caminata. ${CAMINATA_TXT[nivel - 1]} Tu meta: ${CAMINATA_MIN[nivel - 1]} minutos.`), 300); }
   const guardar = () => { try { localStorage.setItem(CLAVE_CAMINATA, JSON.stringify(estado)); } catch (e) {} };
   guardar();
   const rj = reloj(estado);
@@ -1841,8 +1862,8 @@ function caminata(nivel, retomada) {
   const tick = () => {
     if (rj.pausado()) return;
     const t = rj.seg();
-    const f = fase(t); if (f !== ultFase) { ultFase = f; vibrar([200, 100, 200]); campana(f.includes('Rápido') ? 660 : 440); }
-    if (!metaAvisada && t >= meta) { metaAvisada = true; vibrar([300, 150, 300]); campana(); }
+    const f = fase(t); if (f !== ultFase) { ultFase = f; vibrar([200, 100, 200]); campana(f.includes('Rápido') ? 660 : 440); hablar(f.includes('Rápido') ? 'Ahora, paso rápido' : 'Ahora, paso normal'); }
+    if (!metaAvisada && t >= meta) { metaAvisada = true; vibrar([300, 150, 300]); campana(); hablar('¡Meta cumplida! Puedes seguir o terminar.'); }
     pintar();
   };
   const iv = setInterval(tick, 1000);
@@ -1880,6 +1901,23 @@ function reproducirRutina(clave, nivel) {
   }
   const anteriores = ultimosPesos();
   const pesos = {};
+  desbloquearVoz();
+  // ---- Voz guía: anuncia cada paso, cuenta repeticiones y avanza solo (manos libres) ----
+  const RITMO = series ? 4 : 3; // segundos por repetición
+  const durTxt = (n) => (n >= 60 ? `${Math.round(n / 60)} ${Math.round(n / 60) === 1 ? 'minuto' : 'minutos'}` : `${n} segundos`);
+  const primera = (p) => (series ? p.serie === 1 : p.ronda === 1);
+  const kgDe = (p) => pesos[p.id] ?? anteriores[p.id];
+  const previa = (p) => (primera(p) ? Math.min(14, 5 + Math.ceil((p.d || '').length / 15)) : 4);
+  const anuncio = (p) => {
+    if (p.descanso) {
+      const sig = pasos.slice(idx + 1).find((x) => !x.descanso);
+      return `Descansa ${durTxt(p.val)}.` + (sig ? ` Lo que sigue: ${sig.n}${series && sig.series > 1 ? `, serie ${sig.serie}` : ''}.` : '');
+    }
+    const kg = p.kg && kgDe(p) != null ? `, con ${String(kgDe(p)).replace('.', ',')} kilos` : '';
+    return `${p.n}.${series && p.series > 1 ? ` Serie ${p.serie} de ${p.series}.` : ''} ${p.t === 's' ? durTxt(p.val) : `${p.val} repeticiones${p.lado ? ' por lado' : ''}`}${kg}.${primera(p) ? ' ' + p.d : ''}`;
+  };
+  const NUM = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco'];
+  const numero = (n) => NUM[n] || String(n);
   let idx = 0, t = 0, pausa = false;
   const inicio = Date.now();
   const fs = document.createElement('div');
@@ -1895,40 +1933,59 @@ function reproducirRutina(clave, nivel) {
       <small style="opacity:.8">${R.n} · ${p.descanso ? 'Descanso' : series ? (p.series > 1 ? `Serie ${p.serie} de ${p.series}` : 'Una vez') : `Ronda ${p.ronda} de ${rondas}`} · paso ${idx + 1}/${pasos.length}</small>
       <h1 style="margin-top:14px">${p.descanso ? '😮‍💨 Descansa' : esc(p.n)}</h1>
       ${p.descanso ? `<p>Respira tranquilo.${sig ? ' Lo que sigue: <b>' + esc(sig.n) + '</b>' : ''}</p>` : `<p class="paso-txt">${esc(p.d)}</p>`}
-      <div class="reloj">${restante !== null ? mmss(restante) : p.val + (p.lado ? ' x lado' : ' rep.')}</div>
+      <div class="reloj" id="cuenta-rep">${restante !== null ? mmss(restante) : p.val + (p.lado ? ' x lado' : ' rep.')}</div>
+      ${restante === null && !p.descanso && vozActiva() ? '<p style="opacity:.75;font-size:.85rem;margin-top:-6px">🔊 Te cuento las repeticiones y paso solo al siguiente.</p>' : ''}
       ${!p.descanso && p.kg ? `<div style="margin:0 0 14px"><label style="opacity:.85;display:block;margin-bottom:4px">Peso (kg)${anteriores[p.id] != null ? ` · la vez pasada: ${anteriores[p.id]} kg` : ''}</label>
         <input class="i" id="kg" type="number" inputmode="decimal" step="0.5" value="${pesos[p.id] ?? anteriores[p.id] ?? ''}" style="max-width:130px;text-align:center;font-size:1.4rem;font-weight:700"></div>` : ''}
       <div class="fila" style="gap:10px">
-        ${restante !== null ? `<button class="btn sec" data-p>${pausa ? '▶' : '⏸'}</button>` : ''}
+        <button class="btn sec" data-p>${pausa ? '▶' : '⏸'}</button>
         <button class="btn" data-ok>${restante !== null ? 'Saltar ⏭' : 'Listo ✓'}</button>
       </div>`;
     $('[data-x]', fs).onclick = () => { if (confirm('¿Salir de la rutina?')) cerrar(); };
-    const bp = $('[data-p]', fs); if (bp) bp.onclick = () => { pausa = !pausa; pintar(); };
+    $('[data-p]', fs).onclick = () => { pausa = !pausa; if (pausa) { callar(); hablar('Pausa', { rapido: true }); } else hablar('Seguimos', { rapido: true }); pintar(); };
     $('[data-ok]', fs).onclick = siguiente;
+    botonVoz(fs);
   };
   const siguiente = () => {
     const kg = $('#kg', fs);
     if (kg && kg.value !== '') pesos[pasos[idx].id] = Number(String(kg.value).replace(',', '.'));
     idx++; t = 0;
     if (idx >= pasos.length) {
-      cerrar(); campana(660);
+      cerrar(); campana(660); hablar('¡Terminaste! Muy bien hecho.');
       finSesion(R.n, nivel, Math.max(1, Math.round((Date.now() - inicio) / 60000)), 'fuerza', false, Object.keys(pesos).length ? { pesos } : {});
       return;
     }
-    vibrar(); pintar();
+    vibrar(); pintar(); hablar(anuncio(pasos[idx]));
   };
   const iv = setInterval(() => {
     if (pausa) return;
     const p = pasos[idx];
     if (p.t === 's' || p.descanso) {
       t++;
-      if (p.val - t === 3) vibrar(80);
+      const quedan = p.val - t;
+      if (quedan === 3) vibrar(80);
+      if (vozActiva()) {
+        if (quedan === 10 && p.val >= 30) hablar('Diez segundos', { rapido: true });
+        else if (quedan > 0 && quedan <= 3) hablar(numero(quedan), { rapido: true });
+      }
       if (t >= p.val) { campana(p.descanso ? 660 : 528); siguiente(); return; }
-      const r = $('.reloj', fs); if (r) r.textContent = mmss(p.val - t);
+      const r = $('.reloj', fs); if (r) r.textContent = mmss(quedan);
+    } else if (vozActiva()) {
+      // repeticiones: cuenta en voz alta y avanza sola
+      t++;
+      const ini = previa(p), total = p.lado ? p.val * 2 : p.val;
+      if (t < ini || (t - ini) % RITMO !== 0) return;
+      const k = (t - ini) / RITMO + 1;
+      const r = $('#cuenta-rep', fs);
+      if (k <= total) {
+        const enLado = p.lado && k > p.val ? k - p.val : k;
+        hablar((p.lado && k === p.val + 1 ? 'Cambia de lado. ' : '') + numero(enLado), { rapido: true });
+        if (r) r.textContent = `${enLado} / ${p.val}`;
+      } else { hablar('Listo', { rapido: true }); siguiente(); }
     }
   }, 1000);
-  function cerrar() { clearInterval(iv); pantallaEncendida(false); fs.remove(); }
-  pintar();
+  function cerrar() { clearInterval(iv); callar(); pantallaEncendida(false); fs.remove(); }
+  pintar(); setTimeout(() => hablar(anuncio(pasos[0])), 300);
 }
 
 function finSesion(rutina, nivel, minutos, habito, manual, extra = {}) {
@@ -2061,6 +2118,9 @@ function respiracion(minutos, oscuro) {
   const fs = document.createElement('div');
   fs.className = 'full-screen calmo';
   if (oscuro) fs.style.background = '#0d1716';
+  desbloquearVoz();
+  // De noche: voz bajita en todas las respiraciones (sin pasar a tonos) y final en silencio
+  const volVoz = oscuro ? 0.45 : 1;
   fs.innerHTML = `<button class="cerrar" data-x>✕</button>
     <div class="circulo" id="circ">Inhala</div>
     <div id="cuenta" style="font-size:1.4rem;opacity:.9">4</div>
@@ -2076,12 +2136,12 @@ function respiracion(minutos, oscuro) {
     circ.style.transform = fase === 'in' ? 'scale(1.25)' : 'scale(0.8)';
     circ.textContent = fase === 'in' ? 'Inhala' : 'Exhala';
     if (fase === 'in') ciclos++;
-    if (vozActiva() && ciclos <= 3) hablar(fase === 'in' ? 'Inhala' : ciclos === 3 ? 'Exhala lento. Ahora sigue los sonidos: agudo, inhalas. Grave, exhalas.' : 'Exhala lento');
-    else campana(fase === 'in' ? 528 : 396, 0.08);
+    if (vozActiva() && (oscuro || ciclos <= 3)) hablar(fase === 'in' ? 'Inhala' : (!oscuro && ciclos === 3) ? 'Exhala lento. Ahora sigue los sonidos: agudo, inhalas. Grave, exhalas.' : 'Exhala lento', { vol: volVoz });
+    else campana(fase === 'in' ? 528 : 396, oscuro ? 0.05 : 0.22);
   };
   // con voz, primero una indicación corta y después arranca la respiración
   const espera = vozActiva() ? 3 : 0;
-  if (espera) { circ.textContent = 'Cierra los ojos'; hablar('Cierra los ojos. Vamos a respirar juntos.'); }
+  if (espera) { circ.textContent = 'Cierra los ojos'; hablar(oscuro ? 'Cierra los ojos. Respira conmigo.' : 'Cierra los ojos. Vamos a respirar juntos.', { vol: volVoz }); }
   setTimeout(() => requestAnimationFrame(() => { circ.style.transform = 'scale(0.8)'; requestAnimationFrame(aplicar); }), espera * 1000);
   let previa = espera;
   const iv = setInterval(async () => {
@@ -2091,7 +2151,12 @@ function respiracion(minutos, oscuro) {
     if (ft >= dur) { fase = fase === 'in' ? 'out' : 'in'; ft = 0; aplicar(); }
     $('#cuenta', fs).textContent = (fase === 'in' ? 4 : 6) - ft;
     $('#rest', fs).textContent = mmss(total - t);
-    if (t >= total) { cerrar(); campana(); hablar('Muy bien. Cuando quieras, abre los ojos.'); await registrarCalma('Respiración 4-6', minutos); }
+    if (t >= total) {
+      cerrar();
+      if (oscuro) hablar('Que descanses.', { vol: 0.3 }); // de noche no hay campana ni "abre los ojos"
+      else { campana(); hablar('Muy bien. Cuando quieras, abre los ojos.'); }
+      await registrarCalma('Respiración 4-6', minutos);
+    }
   }, 1000);
   function cerrar() { clearInterval(iv); callar(); pantallaEncendida(false); fs.remove(); }
   $('[data-x]', fs).onclick = async () => { cerrar(); if (t >= 60) await registrarCalma('Respiración 4-6', Math.round(t / 60)); };
@@ -2105,7 +2170,7 @@ function meditar(minutos, guiada) {
   const fs = document.createElement('div');
   fs.className = 'full-screen calmo';
   document.body.appendChild(fs);
-  pantallaEncendida(true); campana(432);
+  pantallaEncendida(true); campana(432); desbloquearVoz();
   let ultimaDicha = -1;
   const pintar = () => {
     const i = Math.min(GUIA_MEDITACION.length - 1, Math.floor(t / cada));
@@ -2162,6 +2227,7 @@ function editarOracion(i) {
 }
 
 function oracionGuiada(momento) {
+  desbloquearVoz();
   const ors = perfil().oraciones || [];
   const pasos = [
     { t: 'Silencio', txt: momento === 'mañana' ? 'Antes de empezar el día, respira tres veces profundo. Este momento es para ti y para Dios.' : 'Termina el día. Respira tres veces profundo y deja que el cuerpo afloje.', seg: 30 },
@@ -2213,6 +2279,7 @@ function oracionGuiada(momento) {
 
 // ---------- Rescate de ansiedad ----------
 function rescate() {
+  desbloquearVoz();
   const p = perfil();
   const pasos = [
     { h: 'Estás a salvo', txt: 'Lo que sientes es <b>ansiedad</b>. Es muy incómoda, pero no es peligrosa y <b>siempre pasa</b>. Tu cuerpo está haciendo una falsa alarma.' + (p.recordatorio ? '<br><br>' + esc(p.recordatorio).replace(/\n/g, '<br>') : '') },
@@ -2492,7 +2559,7 @@ async function vistaAjustes() {
   <div class="card"><h2>Mi día</h2>
     <div class="check ${oracionOn ? 'ok' : ''}" id="aj-oracion"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🙏 Incluir momentos de oración</span></div>
     ${S.config.ia ? `<div class="check ${p.consentIA === true ? 'ok' : ''}" id="aj-ia"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">✨ Permitir funciones con IA (OpenAI)</span></div>` : ''}
-    ${HAY_VOZ ? `<div class="check ${p.voz !== false ? 'ok' : ''}" id="aj-voz"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🔊 Voz guía en meditación, respiración, oración y ansiedad</span></div>
+    ${HAY_VOZ ? `<div class="check ${!vozApagada() ? 'ok' : ''}" id="aj-voz"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🔊 Voz guía (ejercicios, caminata, meditación, respiración, oración y ansiedad)</span></div>
     <button class="btn chico borde" id="aj-voz-prueba" style="margin:4px 0 6px">▶ Probar la voz</button>` : ''}
     <button class="btn full sec mt" onclick="bienvenida().then(()=>ir('hoy'))">Ver de nuevo la bienvenida</button></div>
   <div class="card"><h2>Contraseña</h2>
@@ -2526,7 +2593,7 @@ async function vistaAjustes() {
   };
   const ajVoz = $('#aj-voz');
   if (ajVoz) {
-    ajVoz.onclick = async (e) => { e.currentTarget.classList.toggle('ok'); await guardarPerfil({ voz: e.currentTarget.classList.contains('ok') }); toast('Guardado ✓'); };
+    ajVoz.onclick = async (e) => { e.currentTarget.classList.toggle('ok'); await guardarPerfil({ voz: e.currentTarget.classList.contains('ok'), vozAjustes: true }); toast('Guardado ✓'); };
     $('#aj-voz-prueba').onclick = () => hablar('Hola. Esta es la voz que te va a acompañar. Respira tranquilo.', { forzar: true });
   }
   $('#aj-oracion').onclick = async (e) => {
