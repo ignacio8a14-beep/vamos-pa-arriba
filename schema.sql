@@ -84,3 +84,10 @@ CREATE TABLE IF NOT EXISTS ia_usos (
   creado      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_ia_usos ON ia_usos (usuario_id, creado);
+
+-- Audio de la voz guía ya generado (se reutiliza para todos los usuarios)
+CREATE TABLE IF NOT EXISTS voz_cache (
+  clave   TEXT PRIMARY KEY,
+  audio   BYTEA NOT NULL,
+  creado  TIMESTAMPTZ NOT NULL DEFAULT now()
+);

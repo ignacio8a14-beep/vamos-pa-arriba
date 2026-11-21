@@ -11,6 +11,8 @@
 //   OPENAI_API_KEY   opcional: activa "Completar con IA" (leer PDF o foto de un estudio)
 //   OPENAI_MODEL     opcional, modelo a usar (por defecto gpt-5-mini)
 //   IA_LIMITE_MES    opcional, lecturas con IA por usuario por mes (por defecto 10)
+//   TTS_MODEL        opcional, modelo de voz de OpenAI (por defecto gpt-4o-mini-tts)
+//   TTS_VOZ          opcional, voz de OpenAI (por defecto sage)
 //   PORT             opcional, por defecto 3000
 
 const express = require('express');
@@ -133,6 +135,7 @@ app.get('/api/config', (req, res) => res.json({
   recuperar: !!RESEND_API_KEY,
   soporte: SOPORTE_EMAIL,
   ia: !!OPENAI_API_KEY,
+  vozNatural: !!OPENAI_API_KEY,
   iaLimite: IA_LIMITE_MES,
 }));
 
@@ -739,6 +742,12 @@ const ING_NOMBRES = {
   repollo: 'Repollo',
   chauchas: 'Chauchas',
   pepino: 'Pepino',
+  choclo: 'Choclo (fresco o en lata)',
+  arvejas: 'Arvejas',
+  palta: 'Palta',
+  champinones: 'Champiñones',
+  remolacha: 'Remolacha',
+  ricota: 'Ricota descremada',
 };
 
 // ---------- recetas nuevas con IA ----------
@@ -780,17 +789,23 @@ app.post('/api/ia/recetas', auth, wrap(async (req, res) => {
   const focos = (Array.isArray(b.focos) ? b.focos : []).filter((k) => FOCOS_TXT[k]);
   const momento = MOMENTOS_IA[b.momento] ? b.momento : null;
   const idea = String(b.idea || '').slice(0, 200);
-  const evitar = (Array.isArray(b.evitar) ? b.evitar : []).slice(0, 80).map((x) => String(x).slice(0, 80));
+  const evitar = (Array.isArray(b.evitar) ? b.evitar : []).slice(0, 160).map((x) => String(x).slice(0, 70));
+  // Para que no repita siempre lo mismo: cada pedido lleva un estilo de cocina y dos ingredientes protagonistas al azar
+  const ESTILOS = ['criolla argentina casera', 'venezolana liviana', 'mediterránea', 'salteados estilo oriental casero', 'al horno en una sola fuente', 'a la olla, de cocción lenta', 'ensaladas completas y tibias', 'peruana casera', 'mexicana casera sin picante fuerte', 'italiana casera liviana', 'de aprovechamiento (con lo que sobra)', 'rápida, de 15 minutos'];
+  const azar = (a) => a[Math.floor(Math.random() * a.length)];
+  const estilo = azar(ESTILOS);
+  const protagonistas = [...permitidos].sort(() => Math.random() - 0.5).slice(0, 2).map((k) => ING_NOMBRES[k]);
   const pautas = perfil.nutri && perfil.nutri.pautas ? String(perfil.nutri.pautas).slice(0, 1500) : '';
 
-  const prompt = `Eres un cocinero de comida casera argentina, simple y económica. Propón 4 recetas nuevas.
+  const prompt = `Eres un cocinero de comida casera, simple y económica, en Argentina. Propón 5 recetas nuevas y distintas entre sí (distinta proteína y distinta forma de cocción en cada una).
+Inspiración para esta tanda: cocina ${estilo}. Intenta que al menos dos recetas usen ${protagonistas.join(' y ')}.
 Momento del día: ${momento ? MOMENTOS_IA[momento] : 'variado (mezcla desayunos, almuerzos, cenas livianas y meriendas o colaciones)'}.
 ${idea ? `Pedido del usuario: "${idea}".` : ''}
 Ingredientes principales disponibles (usa SOLO estos; sal, especias, ajo, limón, vinagre y agua se pueden usar siempre): ${permitidos.map((k) => ING_NOMBRES[k]).join(', ')}.
 ${excluye.size ? `NUNCA uses: ${[...excluye].map((k) => ING_NOMBRES[k]).join(', ')}.` : ''}
 ${focos.length ? `Enfoque de alimentación saludable general: ${focos.map((k) => FOCOS_TXT[k]).join('; ')}.` : 'Enfoque: alimentación saludable general.'}
 ${pautas ? `Pautas de su nutricionista (respétalas siempre, tienen prioridad): ${pautas}` : ''}
-${evitar.length ? `No repitas estas recetas que ya tiene: ${evitar.join('; ')}.` : ''}
+${evitar.length ? `Ya tiene estas recetas: NO repitas ninguna ni hagas variantes casi iguales (mismo plato con otro nombre): ${evitar.join('; ')}.` : ''}
 Reglas: preparación de hasta 30 minutos cuando se pueda; nada frito; sin azúcar agregada; sin alcohol; porción para 1 persona con medidas caseras (taza, cucharada, puñado); no menciones calorías, suplementos, medicamentos ni promesas de salud; español claro usando "tú".
 En "ing" pon solo las claves de la lista de ingredientes que usa la receta. En "porque" explica en una frase simple por qué encaja con el enfoque.`;
 
@@ -839,6 +854,42 @@ En "ing" pon solo las claves de la lista de ingredientes que usa la receta. En "
     ia: true, creada: new Date().toISOString().slice(0, 10),
   })).filter((x) => x.n && x.m && x.ing.length && x.p && !mencionaExcluido(x.n + ' ' + x.p, excluye));
   res.json({ recetas, descartadas: propuestas - recetas.length, restantes: limiteIA - usos.rows[0].n - 1 });
+}));
+
+// ---------- voz guía natural (texto a voz de OpenAI, con caché) ----------
+// Cada frase se genera una sola vez y queda guardada: la próxima vez (para cualquier usuario) sale de la base.
+const TTS_MODEL = process.env.TTS_MODEL || 'gpt-4o-mini-tts';
+const TTS_VOZ = process.env.TTS_VOZ || 'sage';
+const ESTILOS_VOZ = {
+  calma: 'Habla en español latinoamericano neutro, con voz cálida, suave y muy tranquila, despacio y con pausas, como una guía de meditación.',
+  ejercicio: 'Habla en español latinoamericano neutro, con voz clara, amable y con energía, como un entrenador que motiva sin gritar.',
+};
+const generacionesVoz = new Map(); // usuario → [timestamps] para limitar abusos
+app.post('/api/voz', auth, wrap(async (req, res) => {
+  if (!OPENAI_API_KEY) return res.status(503).json({ error: 'Voz natural no disponible' });
+  const texto = String((req.body && req.body.texto) || '').replace(/\s+/g, ' ').trim().slice(0, 700);
+  const estilo = ESTILOS_VOZ[req.body && req.body.estilo] ? req.body.estilo : 'calma';
+  if (!texto) return res.status(400).json({ error: 'Falta el texto' });
+  const clave = crypto.createHash('sha256').update([TTS_MODEL, TTS_VOZ, estilo, texto].join('|')).digest('hex');
+  const c = await pool.query('SELECT audio FROM voz_cache WHERE clave=$1', [clave]);
+  const enviar = (buf) => res.set({ 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, max-age=86400' }).send(buf);
+  if (c.rowCount) return enviar(c.rows[0].audio);
+  const ahora = Date.now();
+  const lista = (generacionesVoz.get(req.uid) || []).filter((t) => ahora - t < 86400000);
+  if (lista.length >= 500) return res.status(429).json({ error: 'Límite diario de voz alcanzado' });
+  lista.push(ahora); generacionesVoz.set(req.uid, lista);
+  const pedir = (cuerpo) => fetch(OPENAI_URL + '/audio/speech', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + OPENAI_API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo),
+  });
+  let r;
+  try {
+    r = await pedir({ model: TTS_MODEL, voice: TTS_VOZ, input: texto, instructions: ESTILOS_VOZ[estilo], response_format: 'mp3' });
+    if (!r.ok && TTS_MODEL !== 'tts-1') { console.error('TTS', r.status, (await r.text()).slice(0, 200)); r = await pedir({ model: 'tts-1', voice: 'nova', input: texto, response_format: 'mp3', speed: estilo === 'calma' ? 0.9 : 1 }); }
+  } catch (e) { console.error('TTS', e.message); return res.status(502).json({ error: 'No se pudo generar la voz' }); }
+  if (!r.ok) { console.error('TTS', r.status, (await r.text()).slice(0, 200)); return res.status(502).json({ error: 'No se pudo generar la voz' }); }
+  const buf = Buffer.from(await r.arrayBuffer());
+  await pool.query('INSERT INTO voz_cache (clave, audio) VALUES ($1,$2) ON CONFLICT (clave) DO NOTHING', [clave, buf]);
+  enviar(buf);
 }));
 
 // ---------- SPA ----------

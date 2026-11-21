@@ -187,39 +187,92 @@ if (HAY_VOZ) { vozES = elegirVoz(); speechSynthesis.onvoiceschanged = () => { vo
 // S.silencio: el botón 🔇 calla solo la sesión actual (no cambia el ajuste general)
 // La voz solo se considera apagada si se apagó desde Ajustes (antes el botón 🔇 la apagaba para siempre por error)
 const vozApagada = () => perfil().voz === false && perfil().vozAjustes === true;
-const vozActiva = () => HAY_VOZ && !vozApagada() && !S.silencio;
+const vozActiva = () => (HAY_VOZ || !!S.config.vozNatural) && !vozApagada() && !S.silencio;
 let avisoVozDado = false;
 function avisarFalloVoz() {
   if (avisoVozDado) return; avisoVozDado = true;
   toast('No se pudo reproducir la voz. Revisa en el celular: Ajustes → Texto a voz, que haya una voz en español.');
 }
-// Llamar dentro de un toque del usuario: algunos celulares solo habilitan la voz así
-function desbloquearVoz() {
-  S.silencio = false;
-  if (!HAY_VOZ) return;
-  try { if (!vozES) vozES = elegirVoz(); const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {}
+// ---- Dos motores de voz ----
+// "natural": audio generado en el servidor (OpenAI) y guardado en caché. Funciona igual en cualquier celular.
+// "celular": la voz del propio teléfono (sin internet), que en algunos equipos no anda.
+const audioVoz = new Audio();
+audioVoz.preload = 'auto';
+const SILENCIO = 'data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
+const cacheVoz = new Map();
+let turnoVoz = 0, colaPrecarga = Promise.resolve();
+const limpiarTxt = (t) => String(t).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const usarNatural = () => !!S.config.vozNatural && (perfil().motorVoz || 'natural') === 'natural' && !S.vozFallo;
+function urlVoz(txt, estilo) {
+  const k = estilo + '|' + txt;
+  if (!cacheVoz.has(k)) cacheVoz.set(k, fetch('/api/voz', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + S.token },
+    body: JSON.stringify({ texto: txt, estilo }),
+  }).then((r) => { if (!r.ok) throw new Error('voz'); return r.blob(); }).then((b) => URL.createObjectURL(b))
+    .catch((e) => { cacheVoz.delete(k); throw e; }));
+  return cacheVoz.get(k);
 }
-function hablar(txt, { forzar = false, vol = 1, rapido = false } = {}) {
-  if (!HAY_VOZ || (!forzar && !vozActiva())) return;
+// Prepara de antemano las frases que se van a decir (de a una, para no saturar)
+function precargarVoz(textos, estilo) {
+  if (!usarNatural() || !vozActiva()) return;
+  const est = estilo || S.estiloVoz || 'calma';
+  textos.filter(Boolean).map(limpiarTxt).forEach((t) => { colaPrecarga = colaPrecarga.then(() => urlVoz(t, est).catch(() => {})); });
+}
+// Llamar dentro de un toque del usuario: los celulares solo habilitan el sonido así
+function desbloquearVoz(estilo = 'calma') {
+  S.silencio = false; S.estiloVoz = estilo;
+  try { audioVoz.src = SILENCIO; audioVoz.play().catch(() => {}); } catch (e) {}
+  if (!HAY_VOZ) return;
+  try { if (!vozES) vozES = elegirVoz(); } catch (e) {}
+}
+function hablarCelular(t, vol, rapido) {
+  if (!HAY_VOZ) return avisarFalloVoz();
   try {
     if (!vozES) vozES = elegirVoz();
     const decir = () => {
-      const u = new SpeechSynthesisUtterance(String(txt).replace(/<[^>]+>/g, ' '));
+      const u = new SpeechSynthesisUtterance(t);
       u.lang = vozES ? vozES.lang : 'es-ES';
       if (vozES) u.voice = vozES;
       u.rate = rapido ? 1 : 0.82; u.pitch = 0.95; u.volume = vol;
-      u.onerror = (e) => { if (e && e.error && !['interrupted', 'canceled'].includes(e.error)) avisarFalloVoz(); };
+      u.onerror = (e) => {
+        if (!e || !e.error || ['interrupted', 'canceled'].includes(e.error)) return;
+        // si el celular no puede, pasamos a la voz natural (si está disponible)
+        if (S.config.vozNatural && (perfil().motorVoz || 'natural') !== 'natural') { S.usarNaturalPorFallo = true; hablarNatural(t, vol, rapido); }
+        else avisarFalloVoz();
+      };
       speechSynthesis.speak(u);
       if (speechSynthesis.paused) speechSynthesis.resume();
     };
-    // En Android, hablar justo después de cancelar a veces se pierde: se espera un instante
     if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); setTimeout(decir, 150); } else decir();
   } catch (e) { avisarFalloVoz(); }
 }
-function callar() { try { HAY_VOZ && speechSynthesis.cancel(); } catch (e) {} }
+function hablarNatural(t, vol, rapido, estilo) {
+  const mi = ++turnoVoz;
+  try { audioVoz.pause(); } catch (e) {}
+  urlVoz(t, estilo || S.estiloVoz || 'calma').then((url) => {
+    if (mi !== turnoVoz) return;
+    audioVoz.src = url; audioVoz.volume = Math.max(0, Math.min(1, vol));
+    return audioVoz.play();
+  }).catch(() => {
+    if (mi !== turnoVoz) return;
+    // sin internet o sin servidor de voz: probamos con la voz del celular
+    S.vozFallo = true; hablarCelular(t, vol, rapido);
+  });
+}
+function hablar(txt, { forzar = false, vol = 1, rapido = false, estilo } = {}) {
+  if (!forzar && !vozActiva()) return;
+  const t = limpiarTxt(txt); if (!t) return;
+  if (usarNatural() || S.usarNaturalPorFallo) hablarNatural(t, vol, rapido, estilo);
+  else hablarCelular(t, vol, rapido);
+}
+function callar() {
+  turnoVoz++;
+  try { audioVoz.pause(); } catch (e) {}
+  try { HAY_VOZ && speechSynthesis.cancel(); } catch (e) {}
+}
 // Botón 🔊/🔇 para las pantallas guiadas (solo para esta sesión)
 function botonVoz(fs) {
-  if (!HAY_VOZ || vozApagada()) return;
+  if ((!HAY_VOZ && !S.config.vozNatural) || vozApagada()) return;
   const b = document.createElement('button');
   b.className = 'cerrar'; b.style.left = '14px'; b.style.right = 'auto';
   const pintar = () => (b.textContent = vozActiva() ? '🔊' : '🔇');
@@ -334,11 +387,13 @@ const ING = {
   cebolla: ['Cebolla', 'Verdulería'], morron: ['Morrón', 'Verdulería'], zapallito: ['Zapallito', 'Verdulería'],
   acelga: ['Acelga o espinaca', 'Verdulería'], brocoli: ['Brócoli', 'Verdulería'], berenjena: ['Berenjena', 'Verdulería'],
   repollo: ['Repollo', 'Verdulería'], chauchas: ['Chauchas', 'Verdulería'], pepino: ['Pepino', 'Verdulería'],
+  choclo: ['Choclo (fresco o en lata)', 'Verdulería'], arvejas: ['Arvejas', 'Almacén'], palta: ['Palta', 'Verdulería'],
+  champinones: ['Champiñones', 'Verdulería'], remolacha: ['Remolacha', 'Verdulería'], ricota: ['Ricota descremada', 'Lácteos'],
 };
 
 // Grupos para excluir de un toque
 const GRUPOS = {
-  'Lácteos': ['leche', 'yogur', 'queso'],
+  'Lácteos': ['leche', 'yogur', 'queso', 'ricota'],
   'Huevo': ['huevo'],
   'Pescado y mariscos': ['pescado', 'atun', 'sardinas'],
   'Cerdo': ['cerdo'],
@@ -388,6 +443,49 @@ const RECETAS = [
   { id: 'tarta_acelga', n: 'Tarta de acelga con masa integral', m: 'a', ing: ['acelga', 'huevo', 'cebolla', 'harina_integral', 'queso'], p: 'Masa integral casera fina. Relleno: acelga hervida y escurrida, cebolla, 2 huevos y un poco de queso. Una porción + ensalada.' },
   { id: 'omelette_acelga', n: 'Omelette de espinaca o acelga con ensalada', m: 'c', ing: ['huevo', 'acelga', 'tomate', 'lechuga'], p: '2 huevos con acelga o espinaca salteada. Ensalada de tomate y hojas verdes.' },
   { id: 'revuelto_zapallitos', n: 'Revuelto de zapallitos con huevo y queso', m: 'c', ing: ['zapallito', 'huevo', 'queso', 'cebolla'], p: 'Zapallitos y cebolla rehogados, 2 huevos y un poco de queso. Rápido y liviano para la noche.' },
+  // ---- Más variedad (desayunos, colaciones y meriendas) ----
+  { id: 'tostada_palta_huevo', n: 'Tostada integral con palta y huevo', m: 'd', ing: ['pan_integral', 'palta', 'huevo'], p: 'Una tostada integral con un cuarto de palta pisada, sal, limón y un huevo a la plancha o duro.' },
+  { id: 'panqueques_avena', n: 'Panqueques de avena y banana', m: 'dm', ing: ['avena', 'banana', 'huevo'], p: 'Licúa 1 banana, 1 huevo y 3 cucharadas de avena. Cocina pequeños panqueques en sartén antiadherente sin aceite.' },
+  { id: 'ricota_fruta', n: 'Ricota con fruta y canela', m: 'dmk', ing: ['ricota', 'fruta'], p: '3 cucharadas de ricota descremada con fruta picada y canela. Sin azúcar.' },
+  { id: 'arepa_ricota', n: 'Arepa con ricota y tomate', m: 'd', ing: ['harina_maiz', 'ricota', 'tomate'], p: 'Una arepa mediana asada sin aceite, rellena con ricota, tomate en rodajas y orégano.' },
+  { id: 'budin_avena', n: 'Budín de avena y manzana sin azúcar', m: 'm', ing: ['avena', 'manzana', 'huevo', 'leche'], p: 'Mezcla 1 taza de avena, 2 huevos, media taza de leche, 1 manzana rallada, canela y polvo de hornear. Horno 30 min. Una porción por merienda.' },
+  { id: 'yogur_avena_tostada', n: 'Yogur con avena tostada y semillas', m: 'dk', ing: ['yogur', 'avena', 'semillas'], p: 'Tuesta 2 cucharadas de avena en sartén sin aceite y súmalas a un yogur natural con una cucharadita de semillas.' },
+  { id: 'huevo_fruta', n: 'Huevo duro y una fruta', m: 'k', ing: ['huevo', 'fruta'], p: 'Práctico para llevar: un huevo duro y una fruta de estación.' },
+  { id: 'tostada_mani_banana', n: 'Tostada integral con maní y banana', m: 'dm', ing: ['pan_integral', 'mani', 'banana'], p: 'Una tostada integral con una cucharadita de pasta de maní sin azúcar (o maní molido) y media banana en rodajas.' },
+  { id: 'tomate_queso', n: 'Tomate con queso fresco y orégano', m: 'mk', ing: ['tomate', 'queso'], p: 'Un tomate en rodajas con un trozo chico de queso fresco, orégano y un hilo de aceite.' },
+  // ---- Más variedad (almuerzos y cenas) ----
+  { id: 'pollo_cacerola', n: 'Pollo a la cacerola con verduras', m: 'a', ing: ['pollo', 'papa', 'zanahoria', 'cebolla', 'morron'], p: 'Pollo sin piel dorado y luego cocido tapado con cebolla, morrón, zanahoria y una papa chica en cubos, con caldo casero.' },
+  { id: 'arroz_pollo_arvejas', n: 'Guiso de arroz integral con pollo y arvejas', m: 'a', ing: ['arroz_integral', 'pollo', 'arvejas', 'cebolla', 'morron'], p: 'Rehoga cebolla y morrón, suma pollo en cubos, media taza de arroz integral por persona, arvejas y agua caliente. Cocina hasta que el arroz esté tierno.' },
+  { id: 'carne_horno_verduras', n: 'Carne magra al horno con verduras asadas', m: 'a', ing: ['carne', 'zapallo', 'cebolla', 'morron'], p: 'Peceto o cuadril sin grasa al horno con zapallo, cebolla y morrón en trozos. Una porción del tamaño de tu palma.' },
+  { id: 'peceto_remolacha', n: 'Peceto con ensalada de remolacha y zanahoria', m: 'a', ing: ['carne', 'remolacha', 'zanahoria'], p: 'Peceto al horno o a la plancha. Ensalada de remolacha hervida y zanahoria rallada con limón.' },
+  { id: 'albondigas_arroz', n: 'Albóndigas en salsa con arroz integral', m: 'a', ing: ['carne', 'huevo', 'tomate', 'cebolla', 'arroz_integral'], p: 'Albóndigas de carne picada magra con huevo y cebolla, cocidas en salsa de tomate casera. Media taza de arroz integral al lado.' },
+  { id: 'pastel_zapallo', n: 'Pastel de carne y calabaza', m: 'a', ing: ['carne', 'zapallo', 'cebolla', 'huevo'], p: 'Relleno de carne picada magra con cebolla, cubierto con puré de calabaza. Horno 15 min para gratinar.' },
+  { id: 'cazuela_choclo', n: 'Cazuela de pollo, choclo y zapallo', m: 'ac', ing: ['pollo', 'choclo', 'zapallo', 'cebolla'], p: 'Pollo en trozos con cebolla, zapallo en cubos y choclo desgranado, a fuego lento con pimentón.' },
+  { id: 'ensalada_garbanzos', n: 'Ensalada de garbanzos, tomate y pepino', m: 'ac', tag: 'legumbre', ing: ['garbanzos', 'tomate', 'pepino', 'cebolla'], p: 'Garbanzos cocidos con tomate, pepino y cebolla morada, limón, comino y un hilo de aceite.' },
+  { id: 'lentejas_arroz', n: 'Lentejas con arroz integral y cebolla dorada', m: 'a', tag: 'legumbre', ing: ['lentejas', 'arroz_integral', 'cebolla'], p: 'Lentejas y arroz integral cocidos juntos con comino. Arriba, cebolla dorada en poco aceite. Ensalada al lado.' },
+  { id: 'porotos_choclo', n: 'Ensalada de porotos, choclo y morrón', m: 'ac', tag: 'legumbre', ing: ['porotos', 'choclo', 'morron', 'cebolla'], p: 'Porotos cocidos, choclo, morrón y cebolla picados, con limón, aceite y perejil.' },
+  { id: 'sopa_lentejas', n: 'Sopa de lentejas y verduras', m: 'c', tag: 'legumbre', ing: ['lentejas', 'zanahoria', 'zapallo', 'cebolla'], p: 'Lentejas con zanahoria, zapallo y cebolla en caldo casero. Liviana y abrigada para la noche.' },
+  { id: 'fideos_verduras', n: 'Fideos integrales con verduras salteadas', m: 'a', ing: ['fideos_integrales', 'zapallito', 'morron', 'zanahoria'], p: 'Saltea zapallito, morrón y zanahoria en tiras y mezcla con fideos integrales. Un plato playo.' },
+  { id: 'fideos_pollo_brocoli', n: 'Fideos integrales con pollo y brócoli', m: 'a', ing: ['fideos_integrales', 'pollo', 'brocoli'], p: 'Pollo en tiras salteado con brócoli, ajo y limón, mezclado con fideos integrales.' },
+  { id: 'panqueques_acelga', n: 'Panqueques integrales de acelga y ricota', m: 'a', ing: ['harina_integral', 'huevo', 'leche', 'acelga', 'ricota', 'tomate'], p: 'Panqueques de harina integral rellenos de acelga y ricota, con salsa de tomate casera. Gratinar 10 min.' },
+  { id: 'pizza_integral', n: 'Pizza casera integral de verduras', m: 'a', ing: ['harina_integral', 'tomate', 'queso', 'morron', 'cebolla'], p: 'Masa integral fina, salsa de tomate, poco queso y mucha verdura arriba. Dos porciones con ensalada.' },
+  { id: 'empanadas_pollo', n: 'Empanadas al horno de pollo y verduras', m: 'a', ing: ['harina_integral', 'pollo', 'cebolla', 'morron'], p: 'Tapas caseras integrales rellenas de pollo, cebolla y morrón. Al horno, no fritas. Dos o tres con ensalada.' },
+  { id: 'tortilla_papa_horno', n: 'Tortilla de papa y cebolla al horno', m: 'a', ing: ['huevo', 'papa', 'cebolla'], p: 'Papa y cebolla en láminas finas cocidas al horno, mezcladas con huevos batidos y al horno de nuevo. Con ensalada verde.' },
+  { id: 'pescado_criolla', n: 'Pescado a la criolla', m: 'ac', tag: 'pescado', ing: ['pescado', 'tomate', 'cebolla', 'morron'], p: 'Filet de pescado cocido sobre una salsa de tomate, cebolla y morrón, tapado 10-12 min.' },
+  { id: 'arroz_atun_arvejas', n: 'Arroz integral con atún y arvejas', m: 'a', tag: 'pescado', ing: ['arroz_integral', 'atun', 'arvejas'], p: 'Arroz integral con arvejas y atún al natural, limón y perejil. Se come tibio o frío.' },
+  { id: 'tarta_zapallito', n: 'Tarta de zapallitos', m: 'a', ing: ['zapallito', 'huevo', 'queso', 'harina_integral', 'cebolla'], p: 'Masa integral fina, relleno de zapallitos y cebolla rehogados con huevo y un poco de queso.' },
+  { id: 'pollo_limon_repollo', n: 'Pollo al limón con ensalada de repollo', m: 'ac', ing: ['pollo', 'repollo', 'zanahoria'], p: 'Pollo marinado en limón y ajo, a la plancha. Ensalada de repollo y zanahoria rallados.' },
+  { id: 'salteado_carne', n: 'Salteado de carne con verduras', m: 'a', ing: ['carne', 'morron', 'cebolla', 'brocoli'], p: 'Carne magra en tiras finas salteada a fuego fuerte con morrón, cebolla y brócoli.' },
+  { id: 'revuelto_champi', n: 'Revuelto de champiñones y espinaca', m: 'c', ing: ['champinones', 'huevo', 'acelga'], p: 'Champiñones y espinaca o acelga salteados, con 2 huevos revueltos.' },
+  { id: 'ensalada_pollo_palta', n: 'Ensalada de pollo, palta y tomate', m: 'c', ing: ['pollo', 'palta', 'tomate', 'lechuga'], p: 'Pollo desmechado, un cuarto de palta, tomate y hojas verdes, con limón.' },
+  { id: 'minestrone', n: 'Minestrone liviano', m: 'c', tag: 'legumbre', ing: ['zapallo', 'zanahoria', 'porotos', 'tomate', 'fideos_integrales'], p: 'Sopa de verduras con porotos y un puñado chico de fideos integrales cortos.' },
+  { id: 'berenjenas_rellenas', n: 'Berenjenas rellenas de carne y verduras', m: 'ac', ing: ['berenjena', 'carne', 'tomate', 'cebolla'], p: 'Berenjenas al medio, la pulpa salteada con carne picada magra, cebolla y tomate. Rellenar y al horno 20 min.' },
+  { id: 'cerdo_repollo', n: 'Cerdo magro salteado con repollo', m: 'a', ing: ['cerdo', 'repollo', 'zanahoria'], p: 'Solomillo de cerdo en tiras salteado con repollo y zanahoria, un toque de salsa de soja.' },
+  { id: 'hamb_pollo', n: 'Hamburguesas caseras de pollo con ensalada', m: 'ac', ing: ['pollo', 'avena', 'cebolla', 'lechuga', 'tomate'], p: 'Pollo picado con cebolla y avena, formar medallones y cocinar a la plancha. Mucha ensalada.' },
+  { id: 'merluza_rebozada_horno', n: 'Merluza rebozada al horno con puré mixto', m: 'a', tag: 'pescado', ing: ['pescado', 'pan_rallado', 'huevo', 'papa', 'zapallo'], p: 'Filets pasados por huevo y pan rallado, al horno. Puré mitad papa, mitad calabaza.' },
+  { id: 'arepa_mechada', n: 'Arepa con carne mechada y ensalada', m: 'a', ing: ['harina_maiz', 'carne', 'tomate', 'cebolla', 'morron'], p: 'Carne magra cocida y desmechada con tomate, cebolla y morrón. Una arepa mediana rellena, con ensalada al lado.' },
+  { id: 'pollo_champi', n: 'Pollo con champiñones y arroz integral', m: 'a', ing: ['pollo', 'champinones', 'cebolla', 'arroz_integral'], p: 'Pollo en cubos con champiñones y cebolla, una salsa liviana con caldo. Media taza de arroz integral.' },
+  { id: 'ensalada_remolacha_pollo', n: 'Ensalada de remolacha, zanahoria, huevo y pollo', m: 'c', ing: ['remolacha', 'zanahoria', 'huevo', 'pollo'], p: 'Remolacha hervida, zanahoria rallada, huevo duro y pollo desmechado, con limón.' },
   { id: 'crema_zapallo', n: 'Crema de zapallo con huevo duro', m: 'c', ing: ['zapallo', 'cebolla', 'huevo'], p: 'Hierve zapallo y cebolla, licúa con un poco del agua de cocción. Sirve con un huevo duro picado arriba. Liviana y reconfortante.' },
   { id: 'ensalada_tibia_pollo', n: 'Ensalada tibia de pollo y verduras asadas', m: 'c', ing: ['pollo', 'zapallito', 'morron', 'lechuga'], p: 'Pollo en tiras a la plancha con zapallito y morrón asados, sobre hojas verdes. Limón y una cucharadita de aceite.' },
   { id: 'tortilla_verduras', n: 'Tortilla de verduras al horno', m: 'c', ing: ['huevo', 'zapallito', 'cebolla', 'acelga'], p: 'Verduras rehogadas mezcladas con 2 huevos, al horno en fuente chica 15-20 min. Sin papa, para que quede liviana.' },
@@ -1184,11 +1282,25 @@ function racha() {
   return r;
 }
 function planDeHoy(fecha = hoyStr()) {
-  const p = fuente().plan;
-  if (!p || !p.dias || !p.inicio) return null;
-  const i = difDias(fecha, p.inicio);
-  if (i < 0 || i > 6) return null;
-  return p.dias[i];
+  for (const p of [fuente().plan, fuente().planSig]) {
+    if (!p || !p.dias || !p.inicio) continue;
+    const i = difDias(fecha, p.inicio);
+    if (i >= 0 && i <= 6) return p.dias[i];
+  }
+  return null;
+}
+const idsDe = (plan) => (plan && plan.dias ? plan.dias.flatMap((d) => Object.values(d)).filter(Boolean) : []);
+// Cuando termina la semana, empieza sola la siguiente (si ya estaba armada se usa esa; si no, se arma una nueva sin repetir)
+async function asegurarPlan() {
+  const F = fuente(), hoy = hoyStr();
+  if (!F.plan || !F.plan.inicio || difDias(hoy, F.plan.inicio) <= 6) return;
+  const historial = idsDe(F.plan);
+  if (F.planSig && difDias(hoy, F.planSig.inicio) >= 0 && difDias(hoy, F.planSig.inicio) <= 6) {
+    await guardarComida({ plan: F.planSig, planSig: null, comprado: F.compradoSig || [], compradoSig: [], historial });
+  } else if (recetasPermitidas().length >= 8) {
+    await guardarComida({ plan: generarPlan(hoy, new Set(historial)), planSig: null, comprado: [], compradoSig: [], historial });
+  } else return;
+  toast('Empezó una semana nueva de comidas 🥗');
 }
 const recetasIA = () => fuente().recetasIA || [];
 const receta = (id) => RECETAS.find((r) => r.id === id) || recetasIA().find((r) => r.id === id);
@@ -1197,6 +1309,7 @@ const nombreReceta = (r) => (r.ia ? '✨ ' : '') + r.n;
 async function vistaHoy() {
   const hoy = hoyStr();
   await Promise.all([cargarDias(sumarDias(hoy, -60), hoy), cargarFamilia()]);
+  await asegurarPlan();
   const d = S.dias[hoy] || {};
   const h = d.h || {};
   const HAB = habitos();
@@ -1366,9 +1479,10 @@ function lunesDe(fecha) {
   return sumarDias(fecha, -dif);
 }
 
-function generarPlan(inicio) {
+function generarPlan(inicio, evitarIds) {
   const ok = recetasPermitidas();
   const focos = focosDelPlan();
+  const semanaAnterior = evitarIds || new Set(fuente().historial || []);
   const de = (m) => ok.filter((r) => r.m.includes(m));
   const dias = [];
   const usados = {};
@@ -1380,7 +1494,7 @@ function generarPlan(inicio) {
     // menos usadas primero
     const min = Math.min(...c.map((r) => usados[r.id] || 0));
     const menos = c.filter((x) => (usados[x.id] || 0) === min);
-    const r = azarPesado(menos, menos.map((x) => pesoReceta(x, focos)));
+    const r = azarPesado(menos, menos.map((x) => pesoReceta(x, focos) * (semanaAnterior.has(x.id) ? 0.05 : 1)));
     usados[r.id] = (usados[r.id] || 0) + 1;
     return r.id;
   };
@@ -1409,10 +1523,22 @@ async function vistaComida() {
   const p = perfil();
   const F = fuente();
 
+  await asegurarPlan();
+  const F2 = fuente();
+  const finActual = F2.plan && F2.plan.inicio ? sumarDias(F2.plan.inicio, 6) : null;
+  const vigenteActual = F2.plan && difDias(hoyStr(), F2.plan.inicio) >= 0 && difDias(hoyStr(), F2.plan.inicio) <= 6;
+  // la pestaña "Semana siguiente" aparece en los últimos 3 días o si ya está armada
+  const haySig = vigenteActual && (F2.planSig || difDias(finActual, hoyStr()) <= 2);
+  if (!haySig) S.sub.semana = 'actual';
+  const semana = S.sub.semana || 'actual';
+  const claveP = semana === 'sig' ? 'planSig' : 'plan';
+  const claveC = semana === 'sig' ? 'compradoSig' : 'comprado';
+  const chipsSemana = haySig ? `<div class="tabs" style="margin-bottom:10px">${[['actual', 'Esta semana'], ['sig', 'Semana siguiente']].map(([k, t]) => `<span class="chip ${semana === k ? 'on' : ''}" data-semana="${k}">${t}</span>`).join('')}</div>` : '';
+
   if (sub === 'plan') {
     const hoy = hoyStr();
-    const plan = F.plan;
-    const vigente = plan && difDias(hoy, plan.inicio) >= 0 && difDias(hoy, plan.inicio) <= 6;
+    const plan = F2[claveP];
+    const vigente = semana === 'sig' ? !!plan : vigenteActual;
     if (!(p.excluye && p.excluye.length) && !p.excluyeOk) {
       cuerpo += `<div class="card suave"><p class="mb0">Antes de armar el plan, marca <b>lo que no comes</b> para que no aparezca.</p><button class="btn full mt" onclick="S.sub.comida='excluir';render()">Marcar lo que no como</button></div>`;
     }
@@ -1431,10 +1557,15 @@ async function vistaComida() {
     }
     const nutri = p.nutri || {};
     if (nutri.pautas) cuerpo += `<div class="card suave"><small>👩‍⚕️ <b>Tienes pautas de tu nutricionista.</b> Lo que indicó va primero: usa este plan solo como ideas que encajen con sus pautas.</small><button class="btn chico sec mt" onclick="S.sub.comida='nutri';render()">Ver mis pautas</button></div>`;
-    if (!vigente) {
+    cuerpo += chipsSemana;
+    if (semana === 'sig' && !plan) {
+      cuerpo += `<div class="card"><h2>📅 La semana que viene</h2><p class="mut">Del ${fechaCorta(sumarDias(finActual, 1))} al ${fechaCorta(sumarDias(finActual, 7))}. Ármala ahora para hacer las compras con tiempo. No repite las comidas de esta semana.</p>
+      <button class="btn full" id="gen-sig">✨ Armar la semana siguiente</button></div>`;
+    } else if (!vigente) {
       cuerpo += `<div class="card"><h2>Plan de los próximos 7 días</h2><p class="mut">Comidas simples, caseras y económicas${focosPlan.size ? ', adaptadas a tus análisis' : ''}.</p>
       <button class="btn full" id="gen">✨ Armar mi plan de 7 días</button></div>`;
     } else {
+      if (semana === 'actual' && haySig && !F2.planSig) cuerpo += `<div class="card suave" style="padding:10px 14px"><small>📅 Esta semana termina el ${fechaCorta(finActual)}. En <b>Semana siguiente</b> puedes armar la próxima para hacer las compras. Si no, se arma sola cuando empiece.</small></div>`;
       if (S.familia) cuerpo += `<div class="card suave" style="padding:10px 14px"><small>👨‍👩‍👧 Plan compartido de <b>${esc(S.familia.nombre)}</b> · ${personas()} personas · sin lo que no come nadie de la casa</small></div>`;
       cuerpo += `<div class="fila entre" style="margin-bottom:8px"><small>Del ${fechaCorta(plan.inicio)} al ${fechaCorta(sumarDias(plan.inicio, 6))}</small><div class="fila" style="gap:6px"><button class="btn chico borde" id="horarios">⏰ Horarios</button><button class="btn chico borde" id="gen">🔄 Rehacer</button></div></div>`;
       plan.dias.forEach((dia, i) => {
@@ -1446,8 +1577,8 @@ async function vistaComida() {
             const r = receta(dia[m]);
             return `<div class="comida"><div style="flex:1"><div class="mom">${ic} ${nom} · ${horaDe(m)}</div>
               <div>${r ? esc(nombreReceta(r)) : '<span class="mut">—</span>'}</div></div>
-              <button class="btn chico borde" data-ver="${i}|${m}" title="Ver receta">👁</button>
-              <button class="btn chico borde" data-cam="${i}|${m}" title="Cambiar">🔄</button></div>`;
+              <button class="btn chico borde" data-ver="${claveP}|${i}|${m}" title="Ver receta">👁</button>
+              <button class="btn chico borde" data-cam="${claveP}|${i}|${m}" title="Cambiar">🔄</button></div>`;
           }).join('')}
         </div>`;
       });
@@ -1455,15 +1586,16 @@ async function vistaComida() {
   }
 
   if (sub === 'compras') {
-    const plan = F.plan;
-    if (!plan) cuerpo = `<div class="card"><p>Primero arma tu plan semanal.</p></div>`;
+    const plan = F2[claveP];
+    cuerpo = chipsSemana;
+    if (!plan) cuerpo += `<div class="card"><p>Primero arma tu plan semanal.</p></div>`;
     else {
       const cuenta = {};
       plan.dias.forEach((d) => Object.values(d).forEach((id) => { const r = receta(id); r && r.ing.forEach((i) => (cuenta[i] = (cuenta[i] || 0) + 1)); }));
       const porCat = {};
       Object.entries(cuenta).forEach(([k, n]) => { const [nom, cat] = ING[k] || [k, 'Otros']; (porCat[cat] = porCat[cat] || []).push([k, nom, n]); });
-      const tachados = new Set(F.comprado || []);
-      cuerpo = `<div class="card suave" style="padding:10px 14px"><small>🛒 Cantidades para <b>${personas()} ${personas() === 1 ? 'persona' : 'personas'}</b>${S.familia ? '' : ' (crea tu familia en la pestaña 👨‍👩‍👧 para compartir la lista)'}</small></div><p class="mut">El número indica en cuántas comidas de la semana aparece. Toca para tachar lo que ya tienes.</p>` +
+      const tachados = new Set(F2[claveC] || []);
+      cuerpo += `<div class="card suave" style="padding:10px 14px"><small>🛒 ${semana === 'sig' ? `Semana del ${fechaCorta(plan.inicio)} · ` : ''}Cantidades para <b>${personas()} ${personas() === 1 ? 'persona' : 'personas'}</b>${S.familia ? '' : ' (crea tu familia en la pestaña 👨‍👩‍👧 para compartir la lista)'}</small></div><p class="mut">El número indica en cuántas comidas de la semana aparece. Toca para tachar lo que ya tienes.</p>` +
         Object.entries(porCat).sort().map(([cat, items]) => `<div class="card"><h3>${cat}</h3>${items.map(([k, nom, n]) =>
           `<div class="check ${tachados.has(k) ? 'ok' : ''}" data-comp="${k}"><span class="caja">✓</span><span class="txt">${esc(nom)}</span><span class="badge">×${n}</span></div>`).join('')}</div>`).join('') +
         `<button class="btn full borde" id="compartir-compras">📤 Compartir lista</button>`;
@@ -1515,7 +1647,7 @@ async function vistaComida() {
       <select class="i" id="ia-mom"><option value="">Variadas</option>${TODOS_MOMENTOS.map(([m, nom]) => `<option value="${m}">${nom}</option>`).join('')}</select>
       <label class="f">¿Alguna idea o antojo? (opcional)</label>
       <input class="i" id="ia-idea" placeholder="Ej.: algo rápido con pollo, una cena calentita">
-      <button class="btn full mt" id="ia-gen">✨ Sugerir 4 recetas</button></div>
+      <button class="btn full mt" id="ia-gen">✨ Sugerir 5 recetas</button></div>
     <div class="card"><h2>Mis recetas de IA ${lista.length ? `<span class="badge">${lista.length}</span>` : ''}</h2>
       ${lista.length ? lista.slice().reverse().map((r) => `<div class="lista-item"><div class="fila entre"><b>${esc(r.n)}</b><span class="fila" style="gap:6px"><button class="btn chico sec" data-ver-ia="${r.id}">Ver</button><button class="btn chico borde" data-del-ia="${r.id}">🗑</button></span></div>
         <small class="mut">${TODOS_MOMENTOS.filter(([m]) => r.m.includes(m)).map(([, nom]) => nom).join(' · ')}</small>${r.porque ? `<br><small>${esc(r.porque)}</small>` : ''}</div>`).join('')
@@ -1573,19 +1705,34 @@ async function vistaComida() {
   const gen = $('#gen');
   if (gen) gen.onclick = async () => {
     if (recetasPermitidas().length < 8) return toast('Hay muy pocas recetas con tus exclusiones. Revisa "Lo que no como".');
-    await guardarComida({ plan: generarPlan(hoyStr()), comprado: [] }); toast('Plan listo ✓'); render();
+    const F3 = fuente();
+    if (semana === 'sig' && F3.planSig) {
+      await guardarComida({ planSig: generarPlan(F3.planSig.inicio, new Set([...idsDe(F3.plan), ...idsDe(F3.planSig)])), compradoSig: [] });
+    } else {
+      const inicio = vigenteActual ? F3.plan.inicio : hoyStr();
+      await guardarComida({ plan: generarPlan(inicio, new Set([...(F3.historial || []), ...idsDe(F3.plan)])), comprado: [] });
+    }
+    toast('Plan listo ✓'); render();
   };
+  const gs = $('#gen-sig'); if (gs) gs.onclick = async () => {
+    const F3 = fuente();
+    await guardarComida({ planSig: generarPlan(sumarDias(F3.plan.inicio, 7), new Set(idsDe(F3.plan))), compradoSig: [] });
+    toast('Semana siguiente lista ✓'); render();
+  };
+  document.querySelectorAll('[data-semana]').forEach((el) => (el.onclick = () => { S.sub.semana = el.dataset.semana; render(); }));
   document.querySelectorAll('[data-cam]').forEach((el) => (el.onclick = async () => {
-    const [i, m] = el.dataset.cam.split('|');
-    const plan = fuente().plan;
+    const [cl, i, m] = el.dataset.cam.split('|');
+    const plan = fuente()[cl];
     const actual = plan.dias[i][m];
-    const opc = recetasPermitidas().filter((r) => r.m.includes(m) && r.id !== actual);
+    // primero las que no están en la semana
+    const usadas = new Set(idsDe(plan));
+    const opc = recetasPermitidas().filter((r) => r.m.includes(m) && r.id !== actual).sort((a, b) => usadas.has(a.id) - usadas.has(b.id));
     if (!opc.length) return toast('No hay otra opción disponible');
-    elegirReceta(opc, async (id) => { plan.dias[i][m] = id; await guardarComida({ plan }); render(); });
+    elegirReceta(opc, async (id) => { plan.dias[i][m] = id; await guardarComida({ [cl]: plan }); render(); });
   }));
   document.querySelectorAll('[data-ver]').forEach((el) => (el.onclick = () => {
-    const [i, m] = el.dataset.ver.split('|');
-    const r = receta(fuente().plan.dias[i][m]); if (!r) return;
+    const [cl, i, m] = el.dataset.ver.split('|');
+    const r = receta(fuente()[cl].dias[i][m]); if (!r) return;
     modal(`<div class="fila entre"><h2 class="mb0">${esc(nombreReceta(r))}</h2><button class="btn chico borde" data-x>✕</button></div>
       ${r.ia ? `<p class="mut mb0"><small>Receta sugerida por IA${r.porque ? ' · ' + esc(r.porque) : ''}</small></p>` : ''}
       <p class="mt">${esc(r.p)}</p><p class="mut"><b>Lleva:</b> ${r.ing.map((k) => (ING[k] || [k])[0]).join(', ')}</p>${personas() > 1 ? `<p class="mut">👨‍👩‍👧 Las cantidades son por persona: multiplica por ${personas()}.</p>` : ''}
@@ -1599,16 +1746,16 @@ async function vistaComida() {
     });
   }));
   document.querySelectorAll('[data-comp]').forEach((el) => (el.onclick = async () => {
-    const set = new Set(fuente().comprado || []);
+    const set = new Set(fuente()[claveC] || []);
     set.has(el.dataset.comp) ? set.delete(el.dataset.comp) : set.add(el.dataset.comp);
     el.classList.toggle('ok');
-    await guardarComida({ comprado: [...set] });
+    await guardarComida({ [claveC]: [...set] });
   }));
   const comp = $('#compartir-compras');
   if (comp) comp.onclick = () => {
-    const set = new Set(fuente().comprado || []);
+    const set = new Set(fuente()[claveC] || []);
     const cuenta = {};
-    fuente().plan.dias.forEach((d) => Object.values(d).forEach((id) => { const r = receta(id); r && r.ing.forEach((i) => (cuenta[i] = 1)); }));
+    fuente()[claveP].dias.forEach((d) => Object.values(d).forEach((id) => { const r = receta(id); r && r.ing.forEach((i) => (cuenta[i] = 1)); }));
     const txt = `🛒 Lista de compras (${personas()} ${personas() === 1 ? 'persona' : 'personas'})\n` + Object.keys(cuenta).filter((k) => !set.has(k)).map((k) => '• ' + ING[k][0]).join('\n');
     compartir(txt);
   };
@@ -1647,14 +1794,20 @@ async function vistaComida() {
         const r = await api('POST', '/api/ia/recetas', {
           momento: $('#ia-mom').value || null, idea: $('#ia-idea').value,
           excluye: [...excluidos()], focos: [...focosDelPlan()],
-          evitar: recetasPermitidas().map((x) => x.n),
+          evitar: [...recetasIA().map((x) => x.n), ...recetasPermitidas().filter((x) => !x.ia).map((x) => x.n)],
         });
         if (!r.recetas.length) throw new Error('Las recetas que propuso la IA llevaban algo que no comen, así que las descarté. Prueba de nuevo o con otra idea.');
-        const todas = [...recetasIA(), ...r.recetas].slice(-40);
+        // no guardar recetas que ya existen con el mismo nombre
+        const norm = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z ]/g, '').trim();
+        const existentes = new Set([...RECETAS, ...recetasIA()].map((x) => norm(x.n)));
+        const nuevas = r.recetas.filter((x) => !existentes.has(norm(x.n)));
+        if (!nuevas.length) throw new Error('La IA propuso recetas que ya tienes. Prueba con otro momento del día o un antojo distinto.');
+        r.descartadas = (r.descartadas || 0) + (r.recetas.length - nuevas.length); r.recetas = nuevas;
+        const todas = [...recetasIA(), ...r.recetas].slice(-60);
         await guardarComida({ recetasIA: todas });
-        toast(`${r.recetas.length === 1 ? '1 receta nueva' : r.recetas.length + ' recetas nuevas'} ✓${r.descartadas ? ` (descarté ${r.descartadas} que llevaban algo que no comen)` : ''}${r.restantes >= 0 ? ` · te quedan ${r.restantes} usos de IA este mes` : ''}`);
+        toast(`${r.recetas.length === 1 ? '1 receta nueva' : r.recetas.length + ' recetas nuevas'} ✓${r.descartadas ? ` (descarté ${r.descartadas} repetidas o con algo que no comen)` : ''}${r.restantes >= 0 ? ` · te quedan ${r.restantes} usos de IA este mes` : ''}`);
         render();
-      } catch (e) { toast(e.message); b.disabled = false; b.textContent = '✨ Sugerir 4 recetas'; }
+      } catch (e) { toast(e.message); b.disabled = false; b.textContent = '✨ Sugerir 5 recetas'; }
     };
     document.querySelectorAll('[data-del-ia]').forEach((x) => (x.onclick = async () => {
       if (!confirm('¿Borrar esta receta?')) return;
@@ -1830,7 +1983,7 @@ function caminataGuardada() {
 function caminata(nivel, retomada) {
   const meta = CAMINATA_MIN[nivel - 1] * 60;
   const estado = retomada || { nivel, inicio: Date.now(), pausadoMs: 0, pausaDesde: null };
-  if (!retomada) { desbloquearVoz(); setTimeout(() => hablar(`Empezamos la caminata. ${CAMINATA_TXT[nivel - 1]} Tu meta: ${CAMINATA_MIN[nivel - 1]} minutos.`), 300); }
+  if (!retomada) { desbloquearVoz('ejercicio'); precargarVoz(['Ahora, paso rápido', 'Ahora, paso normal', '¡Meta cumplida! Puedes seguir o terminar.']); setTimeout(() => hablar(`Empezamos la caminata. ${CAMINATA_TXT[nivel - 1]} Tu meta: ${CAMINATA_MIN[nivel - 1]} minutos.`), 300); }
   const guardar = () => { try { localStorage.setItem(CLAVE_CAMINATA, JSON.stringify(estado)); } catch (e) {} };
   guardar();
   const rj = reloj(estado);
@@ -1901,10 +2054,10 @@ function reproducirRutina(clave, nivel) {
   }
   const anteriores = ultimosPesos();
   const pesos = {};
-  desbloquearVoz();
+  desbloquearVoz('ejercicio');
   // ---- Voz guía: anuncia cada paso, cuenta repeticiones y avanza solo (manos libres) ----
   const RITMO = series ? 4 : 3; // segundos por repetición
-  const durTxt = (n) => (n >= 60 ? `${Math.round(n / 60)} ${Math.round(n / 60) === 1 ? 'minuto' : 'minutos'}` : `${n} segundos`);
+  const durTxt = (n) => (n >= 60 && n % 60 === 0 ? `${n / 60} ${n === 60 ? 'minuto' : 'minutos'}` : `${n} segundos`);
   const primera = (p) => (series ? p.serie === 1 : p.ronda === 1);
   const kgDe = (p) => pesos[p.id] ?? anteriores[p.id];
   const previa = (p) => (primera(p) ? Math.min(14, 5 + Math.ceil((p.d || '').length / 15)) : 4);
@@ -1985,6 +2138,9 @@ function reproducirRutina(clave, nivel) {
     }
   }, 1000);
   function cerrar() { clearInterval(iv); callar(); pantallaEncendida(false); fs.remove(); }
+  precargarVoz([anuncio(pasos[0]), ...NUM.slice(1, 26), 'Listo', 'Pausa', 'Seguimos', 'Diez segundos', '¡Terminaste! Muy bien hecho.',
+    ...pasos.slice(1).map((p) => { const k = idx; idx = pasos.indexOf(p); const a = anuncio(p); idx = k; return a; }),
+    ...NUM.slice(1, 13).map((n) => 'Cambia de lado. ' + n)]);
   pintar(); setTimeout(() => hablar(anuncio(pasos[0])), 300);
 }
 
@@ -2119,6 +2275,8 @@ function respiracion(minutos, oscuro) {
   fs.className = 'full-screen calmo';
   if (oscuro) fs.style.background = '#0d1716';
   desbloquearVoz();
+  precargarVoz(oscuro ? ['Cierra los ojos. Respira conmigo.', 'Inhala', 'Exhala lento', 'Que descanses.']
+    : ['Cierra los ojos. Vamos a respirar juntos.', 'Inhala', 'Exhala lento', 'Exhala lento. Ahora sigue los sonidos: agudo, inhalas. Grave, exhalas.', 'Muy bien. Cuando quieras, abre los ojos.']);
   // De noche: voz bajita en todas las respiraciones (sin pasar a tonos) y final en silencio
   const volVoz = oscuro ? 0.45 : 1;
   fs.innerHTML = `<button class="cerrar" data-x>✕</button>
@@ -2171,6 +2329,7 @@ function meditar(minutos, guiada) {
   fs.className = 'full-screen calmo';
   document.body.appendChild(fs);
   pantallaEncendida(true); campana(432); desbloquearVoz();
+  if (guiada) precargarVoz([...GUIA_MEDITACION, 'Muy bien. Mueve suavemente las manos y, cuando quieras, abre los ojos.']);
   let ultimaDicha = -1;
   const pintar = () => {
     const i = Math.min(GUIA_MEDITACION.length - 1, Math.floor(t / cada));
@@ -2238,6 +2397,7 @@ function oracionGuiada(momento) {
     { t: momento === 'mañana' ? 'Para el día' : 'Para descansar', txt: momento === 'mañana' ? 'Elige una intención simple para hoy: paciencia, presencia, calma…' : 'Suelta el día. Lo que no se resolvió hoy puede esperar a mañana. Estás cuidado.', campo: momento === 'mañana' ? 'intencion' : null },
   ];
   const datos = { momento };
+  precargarVoz(pasos.map((p) => p.t + '. ' + (p.txt || '') + (p.oraciones ? ' ' + ors.map((o) => o.titulo + '. ' + o.texto).join('. ') : '')));
   let i = 0;
   const fs = document.createElement('div');
   fs.className = 'full-screen calmo';
@@ -2290,6 +2450,7 @@ function rescate() {
     ...(p.planRescate ? [{ h: 'Tu plan', txt: esc(p.planRescate).replace(/\n/g, '<br>') }] : []),
     { h: 'Ya está bajando', txt: 'Cada vez que atraviesas uno de estos momentos sin que pase nada grave, tu cerebro aprende que no era peligro.<br><br>Lo hiciste bien.', fin: true },
   ];
+  precargarVoz([...pasos.filter((ps) => !ps.resp).map((ps) => ps.h + '. ' + ps.txt.replace(/<br>/g, '. ')), 'Inhala', 'Exhala lento']);
   let i = 0;
   const fs = document.createElement('div');
   fs.className = 'full-screen calmo';
@@ -2559,8 +2720,11 @@ async function vistaAjustes() {
   <div class="card"><h2>Mi día</h2>
     <div class="check ${oracionOn ? 'ok' : ''}" id="aj-oracion"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🙏 Incluir momentos de oración</span></div>
     ${S.config.ia ? `<div class="check ${p.consentIA === true ? 'ok' : ''}" id="aj-ia"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">✨ Permitir funciones con IA (OpenAI)</span></div>` : ''}
-    ${HAY_VOZ ? `<div class="check ${!vozApagada() ? 'ok' : ''}" id="aj-voz"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🔊 Voz guía (ejercicios, caminata, meditación, respiración, oración y ansiedad)</span></div>
-    <button class="btn chico borde" id="aj-voz-prueba" style="margin:4px 0 6px">▶ Probar la voz</button>` : ''}
+    ${(HAY_VOZ || S.config.vozNatural) ? `<div class="check ${!vozApagada() ? 'ok' : ''}" id="aj-voz"><span class="caja">✓</span><span class="txt" style="text-decoration:none;color:inherit">🔊 Voz guía (ejercicios, caminata, meditación, respiración, oración y ansiedad)</span></div>
+    ${S.config.vozNatural ? `<label class="f">Tipo de voz</label><select class="i" id="aj-motor">
+      <option value="natural" ${(p.motorVoz || 'natural') === 'natural' ? 'selected' : ''}>Natural (recomendada, usa internet)</option>
+      <option value="celular" ${p.motorVoz === 'celular' ? 'selected' : ''}>La voz de mi celular (sin internet)</option></select>` : ''}
+    <button class="btn chico borde" id="aj-voz-prueba" style="margin:8px 0 6px">▶ Probar la voz</button>` : ''}
     <button class="btn full sec mt" onclick="bienvenida().then(()=>ir('hoy'))">Ver de nuevo la bienvenida</button></div>
   <div class="card"><h2>Contraseña</h2>
     <label class="f">Actual</label><input class="i" type="password" id="pw-a" autocomplete="current-password">
@@ -2594,7 +2758,8 @@ async function vistaAjustes() {
   const ajVoz = $('#aj-voz');
   if (ajVoz) {
     ajVoz.onclick = async (e) => { e.currentTarget.classList.toggle('ok'); await guardarPerfil({ voz: e.currentTarget.classList.contains('ok'), vozAjustes: true }); toast('Guardado ✓'); };
-    $('#aj-voz-prueba').onclick = () => hablar('Hola. Esta es la voz que te va a acompañar. Respira tranquilo.', { forzar: true });
+    $('#aj-voz-prueba').onclick = () => { desbloquearVoz(); S.vozFallo = false; hablar('Hola. Esta es la voz que te va a acompañar. Respira tranquilo.', { forzar: true }); };
+    const mot = $('#aj-motor'); if (mot) mot.onchange = async () => { S.vozFallo = false; S.usarNaturalPorFallo = false; await guardarPerfil({ motorVoz: mot.value }); toast('Guardado ✓'); };
   }
   $('#aj-oracion').onclick = async (e) => {
     e.currentTarget.classList.toggle('ok');
