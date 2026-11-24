@@ -44,7 +44,7 @@ const pool = new Pool({
 });
 
 const TIPOS = ['ejercicio', 'meditacion', 'oracion', 'consulta', 'estudio',
-  'psicologo', 'sueno', 'peso', 'episodio'];
+  'psicologo', 'sueno', 'peso', 'episodio', 'malestar'];
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const app = express();

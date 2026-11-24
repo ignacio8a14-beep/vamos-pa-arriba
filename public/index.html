@@ -1008,7 +1008,7 @@ function htmlCampo(c, datos) {
     if (c.t === 'textarea') return `<label class="f">${c.l}</label><textarea class="i" id="${id}" placeholder="${esc(c.ph || '')}">${esc(v)}</textarea>`;
     if (c.t === 'select') return `<label class="f">${c.l}</label><select class="i" id="${id}">${c.ph ? `<option value="" ${v ? '' : 'selected'}>${esc(c.ph)}</option>` : ''}${c.op.map((o) => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
     if (c.t === 'check') return `<label class="check ${v ? 'ok' : ''}" style="border:none" onclick="this.classList.toggle('ok')" data-k="${c.k}" id="${id}"><span class="caja">✓</span><span>${c.l}</span></label>`;
-    if (c.t === 'escala') return `<label class="f">${c.l}</label><div class="fila" id="${id}" data-v="${esc(v)}">${c.op.map((o, i) => `<button type="button" class="emo ${String(v) === String(i + 1) ? 'on' : ''}" data-i="${i + 1}" onclick="this.parentNode.dataset.v=this.dataset.i;[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this))">${o}</button>`).join('')}</div>`;
+    if (c.t === 'escala') return `<label class="f">${c.l}</label><div class="fila" id="${id}" data-v="${esc(v)}">${c.op.map((o, i) => `<button type="button" class="emo ${String(v) === String(i + 1) ? 'on' : ''}" ${o.length > 2 ? 'style="font-size:.95rem;padding:8px 12px;width:auto;height:auto"' : ''} data-i="${i + 1}" onclick="this.parentNode.dataset.v=this.dataset.i;[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this))">${o}</button>`).join('')}</div>`;
     const step = c.t === 'number' ? 'step="any" inputmode="decimal"' : '';
     return `<label class="f">${c.l}</label><input class="i" id="${id}" type="${c.t || 'text'}" ${step} value="${esc(v)}" placeholder="${esc(c.ph || '')}">`;
   }
@@ -1275,11 +1275,119 @@ function puntosDia(d) {
   n += (d.agua || 0) >= 6 ? 1 : 0;
   return n;
 }
+// Los días en que estuviste enfermo no suman, pero tampoco cortan la racha
 function racha() {
   let r = 0, f = hoyStr();
   if (puntosDia(S.dias[f]) < 3) f = sumarDias(f, -1);
-  while (puntosDia(S.dias[f]) >= 3) { r++; f = sumarDias(f, -1); }
+  for (let i = 0; i < 120; i++) {
+    if (puntosDia(S.dias[f]) >= 3) r++;
+    else if (!enPausa(f)) break;
+    f = sumarDias(f, -1);
+  }
   return r;
+}
+
+/* ---------- Cuando uno se siente mal (gripe, malestar, mala noche) ---------- */
+const SINTOMAS = ['Gripe o resfrío', 'Fiebre', 'Dolor de garganta', 'Tos', 'Mocos / congestión', 'Dolor de cabeza', 'Dolor de cuerpo', 'Malestar de estómago', 'Dormí mal', 'Mucho cansancio', 'Otro'];
+const malestares = () => S.cache.malestar || [];
+const malestarActivo = () => malestares().find((r) => !r.datos.fin) || null;
+const enPausa = (f) => malestares().some((r) => f >= r.fecha && (!r.datos.fin || f < r.datos.fin));
+const PAUSABLES = ['caminata', 'fuerza'];
+
+function formMalestar(existente, alGuardar) {
+  const d = existente ? existente.datos : {};
+  const sel = new Set(d.sintomas || []);
+  const campos = [
+    { k: 'fecha', l: '¿Desde cuándo?', t: 'date' },
+    { k: 'intensidad', l: '¿Qué tan mal te sientes?', t: 'escala', op: ['Leve', 'Regular', 'Bastante mal'] },
+    { k: 'temp', l: 'Temperatura (si te la tomaste)', t: 'number', ph: 'Ej.: 37.8' },
+    { k: 'nota', l: 'Algo más (opcional)', t: 'textarea', ph: 'Ej.: qué tomaste, si consultaste, cómo dormiste' },
+  ];
+  modal(`
+    <div class="fila entre"><h2 class="mb0">🤒 ${existente ? 'Cómo sigues' : 'No me siento bien'}</h2><button class="btn chico borde" data-x>✕</button></div>
+    <p class="mut">Anótalo y la app se acomoda: la caminata y el ejercicio quedan en pausa y tu racha no se corta.</p>
+    <label class="f">¿Qué tienes?</label>
+    <div>${SINTOMAS.map((t) => `<span class="chip ${sel.has(t) ? 'on' : ''}" data-sin="${esc(t)}">${esc(t)}</span>`).join('')}</div>
+    ${htmlCampos(campos, { ...d, fecha: existente ? existente.fecha : hoyStr() })}
+    <button class="btn full mt" data-ok>Guardar</button>
+    ${existente ? `<button class="btn full mt borde" data-del style="color:var(--rojo)">Borrar</button>` : ''}
+  `, (o) => {
+    o.querySelectorAll('[data-sin]').forEach((el) => (el.onclick = () => { el.classList.toggle('on'); el.classList.contains('on') ? sel.add(el.dataset.sin) : sel.delete(el.dataset.sin); }));
+    $('[data-x]', o).onclick = () => o.remove();
+    $('[data-ok]', o).onclick = async () => {
+      const v = leerCampos(campos, o);
+      const fecha = v.fecha || hoyStr(); delete v.fecha;
+      if (fecha > hoyStr()) { toast('La fecha no puede ser futura'); return; }
+      const datos = { ...d, ...v, sintomas: [...sel] };
+      try {
+        if (existente) await editarRegistro(existente.id, 'malestar', fecha, datos);
+        else await nuevoRegistro('malestar', fecha, { ...datos, fin: null, seg: {} });
+        await registros('malestar', true);
+        o.remove(); toast(existente ? 'Actualizado ✓' : 'Anotado. Hoy toca cuidarte 💚');
+        alGuardar ? alGuardar() : render();
+      } catch (e) { toast(e.message); }
+    };
+    if (existente) $('[data-del]', o).onclick = async () => {
+      if (!confirm('¿Borrar este registro?')) return;
+      await borrarRegistro(existente.id, 'malestar'); await registros('malestar', true); o.remove(); render();
+    };
+  });
+}
+
+async function seguirMalestar(estado) {
+  const m = malestarActivo(); if (!m) return;
+  await editarRegistro(m.id, 'malestar', m.fecha, { ...m.datos, seg: { ...(m.datos.seg || {}), [hoyStr()]: estado } });
+  await registros('malestar', true);
+  vistaHoy();
+}
+async function terminarMalestar() {
+  const m = malestarActivo(); if (!m) return;
+  await editarRegistro(m.id, 'malestar', m.fecha, { ...m.datos, fin: hoyStr() });
+  await registros('malestar', true);
+  toast('¡Qué bueno! 💚 Vuelve de a poco');
+  vistaHoy();
+}
+
+function tarjetaMalestar() {
+  const hoy = hoyStr();
+  const m = malestarActivo();
+  if (!m) {
+    const rec = malestares().find((r) => r.datos.fin && difDias(hoy, r.datos.fin) <= 2);
+    return rec ? `<div class="nota" style="border-color:var(--verde);margin-bottom:12px">💚 <b>Volviendo de a poco.</b> Estos días haz una caminata corta y tranquila (10 a 15 minutos) y escucha a tu cuerpo. No hace falta recuperar lo perdido.</div>` : '';
+  }
+  const dia = difDias(hoy, m.fecha) + 1;
+  const seg = (m.datos.seg || {})[hoy];
+  const ayer = (m.datos.seg || {})[sumarDias(hoy, -1)];
+  const fiebre = (m.datos.sintomas || []).includes('Fiebre') || Number(m.datos.temp) >= 38;
+  let consejo = '';
+  if (seg === 'peor' && ayer === 'peor') consejo = 'Llevas dos días sintiéndote peor. Lo mejor es que te vea tu médico.';
+  else if (seg === 'peor') consejo = 'Si mañana sigues peor, consulta con tu médico. Mientras tanto, descanso y mucho líquido.';
+  else if (dia >= 7) consejo = 'Ya va una semana. Si no notas mejoría, conviene que te vea tu médico.';
+  else if (fiebre && dia >= 4) consejo = 'Si la fiebre sigue después de 3 días, conviene consultar con tu médico.';
+  return `<div class="card" style="background:#fdf3e7;border:1px solid #f0d9b5">
+    <h2 class="mb0">🤒 Hoy toca cuidarte</h2>
+    <small class="mut">Día ${dia}${(m.datos.sintomas || []).length ? ' · ' + esc(m.datos.sintomas.join(', ')) : ''}</small>
+    <p class="mt">Hoy el único objetivo es <b>recuperarte</b>. La caminata y el ejercicio quedan en pausa y <b>tu racha no se corta</b>. Descansar también es cuidarte.</p>
+    ${dia > 1 || seg ? `<label class="f">¿Cómo te sientes hoy comparado con ayer?</label>
+    <div class="fila" style="gap:8px">${[['mejor', '🙂 Mejor'], ['igual', '😐 Igual'], ['peor', '😣 Peor']].map(([k, t]) => `<span class="chip ${seg === k ? 'on' : ''}" data-seg="${k}">${t}</span>`).join('')}</div>` : ''}
+    ${consejo ? `<div class="nota">${consejo}</div>` : ''}
+    <div class="mt" style="line-height:1.9">
+      💧 Toma líquido seguido: agua, té, caldo<br>
+      🍲 Comidas livianas y calientes, sin obligarte<br>
+      🛏️ Descansa sin culpa, y si puedes, una siesta
+    </div>
+    <div class="fila mt" style="gap:8px;flex-wrap:wrap">
+      <button class="btn chico sec" onclick="respiracion(3)">🌬️ Respirar 3 min</button>
+      ${perfil().oracion !== false ? `<button class="btn chico sec" onclick="oracionGuiada(new Date().getHours() < 14 ? 'mañana' : 'noche')">🙏 Orar</button>` : ''}
+    </div>
+    <details class="mt"><summary style="cursor:pointer;color:var(--gris);font-size:.9rem">¿Cuándo consultar?</summary>
+      <p style="font-size:.88rem" class="mb0">Consulta con tu médico si la fiebre dura más de 3 días, si te sientes cada vez peor o si mejoras y después empeoras. Ve a la guardia si te falta el aire, tienes dolor de pecho o no puedes tomar líquidos.</p>
+    </details>
+    <div class="fila mt" style="gap:8px">
+      <button class="btn sec" style="flex:1" onclick="formMalestar(malestarActivo())">✏️ Anotar</button>
+      <button class="btn" style="flex:1" onclick="terminarMalestar()">✅ Ya me siento bien</button>
+    </div>
+  </div>`;
 }
 function planDeHoy(fecha = hoyStr()) {
   for (const p of [fuente().plan, fuente().planSig]) {
@@ -1308,11 +1416,14 @@ const nombreReceta = (r) => (r.ia ? '✨ ' : '') + r.n;
 
 async function vistaHoy() {
   const hoy = hoyStr();
-  await Promise.all([cargarDias(sumarDias(hoy, -60), hoy), cargarFamilia()]);
+  await Promise.all([cargarDias(sumarDias(hoy, -60), hoy), cargarFamilia(), registros('malestar', true)]);
   await asegurarPlan();
   const d = S.dias[hoy] || {};
   const h = d.h || {};
-  const HAB = habitos();
+  const pausa = !!malestarActivo();
+  // enfermo: caminata y fuerza quedan en pausa (no cuentan, salvo que igual las hagas)
+  const HAB = habitos().filter(([k]) => !pausa || !PAUSABLES.includes(k) || h[k]);
+  const HAB_P = pausa ? habitos().filter(([k]) => PAUSABLES.includes(k) && !h[k]) : [];
   const hechos = HAB.filter(([k]) => h[k]).length;
   const nombre = (S.usuario.nombre || '').split(' ')[0];
   const frase = FRASES[(parseF(hoy).getDate() + parseF(hoy).getMonth()) % FRASES.length];
@@ -1335,15 +1446,19 @@ async function vistaHoy() {
     <div class="semana">${semana.map((f) => {
       const p = puntosDia(S.dias[f]);
       const cl = p >= 5 ? 'p3' : p >= 3 ? 'p2' : p >= 1 ? 'p1' : '';
-      return `<div style="color:#fff;opacity:.9">${DIAS_C[parseF(f).getDay()]}<div class="pt ${cl} ${f === hoy ? 'hoy' : ''}">${p || ''}</div></div>`;
+      return `<div style="color:#fff;opacity:.9">${DIAS_C[parseF(f).getDay()]}<div class="pt ${cl} ${f === hoy ? 'hoy' : ''}">${p || (enPausa(f) ? '🤒' : '')}</div></div>`;
     }).join('')}</div>
   </div>
 
-  <button class="btn full sec" onclick="rescate()" style="margin-bottom:12px">🫶 Siento que empieza la ansiedad</button>
+  ${tarjetaMalestar()}
+
+  <button class="btn full sec" onclick="rescate()" style="margin-bottom:${pausa ? 12 : 8}px">🫶 Siento que empieza la ansiedad</button>
+  ${pausa ? '' : `<button class="btn full borde" onclick="formMalestar()" style="margin-bottom:12px">🤒 Hoy no me siento bien de salud</button>`}
 
   <div class="card">
     <h2>Hábitos</h2>
     ${HAB.map(([k, ic, txt]) => `<div class="check ${h[k] ? 'ok' : ''}" data-h="${k}"><span class="caja">✓</span><span class="txt">${ic} ${txt}</span></div>`).join('')}
+    ${HAB_P.map(([k, ic, txt]) => `<div class="check" data-h="${k}" style="opacity:.5"><span class="caja">✓</span><span class="txt">${ic} ${txt} <small>· en pausa</small></span></div>`).join('')}
   </div>
 
   <div class="card">
@@ -1878,7 +1993,7 @@ async function compartir(txt) {
 async function vistaMover() {
   const p = perfil();
   const nivel = p.nivel || 1;
-  const ej = await registros('ejercicio', true);
+  const [ej] = await Promise.all([registros('ejercicio', true), registros('malestar')]);
   const hoy = hoyStr();
   const semana = ej.filter((r) => difDias(hoy, r.fecha) < 7);
   const minSem = semana.reduce((a, r) => a + (Number(r.datos.minutos) || 0), 0);
@@ -1901,6 +2016,7 @@ async function vistaMover() {
   }[lugar];
 
   $('#app').innerHTML = `${encabezado('Mover el cuerpo', lugar === 'gimnasio' ? 'En el gimnasio, a tu ritmo' : 'Sin gimnasio, a tu ritmo')}
+  ${malestarActivo() ? `<div class="card" style="background:#fdf3e7;border:1px solid #f0d9b5"><b>🤒 Estás en modo cuidarte.</b><br>Hoy lo mejor es descansar. Si tienes ganas, como mucho unos <b>estiramientos suaves</b>. Cuando te sientas bien, márcalo en Hoy y volvemos de a poco.</div>` : ''}
   <div class="fila wrap" style="margin-bottom:10px"><span class="mut">📍 Entreno en:</span>${LUGARES.map(([k, t]) => `<span class="chip ${lugar === k ? 'on' : ''}" data-lugar="${k}">${t}</span>`).join('')}</div>
   <div class="card verde">
     <div class="fila entre"><div><small style="color:#fff;opacity:.85">Esta semana</small><div class="big">${minSem} min</div></div>
@@ -2573,12 +2689,12 @@ function sparkline(vals, w = 300, h = 60) {
 
 async function vistaSalud() {
   const sub = S.sub.salud || 'resumen';
-  const tabs = [['resumen', '📊 Resumen'], ['estudio', '🧪 Estudios'], ['consulta', '🩺 Consultas'], ['psicologo', '💬 Psicólogo'], ['sueno', '😴 Sueño'], ['peso', '⚖️ Peso'], ['episodio', '🫶 Ansiedad']];
+  const tabs = [['resumen', '📊 Resumen'], ['estudio', '🧪 Estudios'], ['consulta', '🩺 Consultas'], ['psicologo', '💬 Psicólogo'], ['sueno', '😴 Sueño'], ['peso', '⚖️ Peso'], ['episodio', '🫶 Ansiedad'], ['malestar', '🤒 Malestares']];
   let cuerpo = '';
   const hoy = hoyStr();
 
   if (sub === 'resumen') {
-    const [est, con, sue, pes, epi, psi, ej] = await Promise.all(['estudio', 'consulta', 'sueno', 'peso', 'episodio', 'psicologo', 'ejercicio'].map((t) => registros(t)));
+    const [est, con, sue, pes, epi, psi, ej, mal] = await Promise.all(['estudio', 'consulta', 'sueno', 'peso', 'episodio', 'psicologo', 'ejercicio', 'malestar'].map((t) => registros(t)));
     const lab = est.filter((r) => r.datos.tipo === 'Análisis de sangre');
     const ult = lab[0];
     const uib = est.filter(ES_INBODY)[0];
@@ -2626,8 +2742,24 @@ async function vistaSalud() {
         const mol = ej.filter((r) => r.datos.molestia && difDias(hoy, r.fecha) < 60);
         if (mol.length) L.push(`Molestias durante ejercicio (60 días): ${mol.length}${mol[0].datos.nota ? ' — ' + mol[0].datos.nota : ''}`);
         if (psi.length) L.push(`Sesiones de psicología registradas: ${psi.length}`);
+        const m90 = mal.filter((r) => difDias(hoy, r.fecha) < 90);
+        if (m90.length) { L.push(`\nMalestares últimos 90 días:`); m90.forEach((r) => L.push(`• ${fechaCorta(r.fecha)}${r.datos.fin ? ' al ' + fechaCorta(r.datos.fin) : ' (en curso)'}: ${(r.datos.sintomas || []).join(', ') || 'malestar'}${r.datos.temp ? ' · ' + r.datos.temp + ' °C' : ''}${r.datos.nota ? ' — ' + r.datos.nota : ''}`)); }
         compartir(L.join('\n'));
       };
+    });
+  } else if (sub === 'malestar') {
+    const regs = await registros('malestar', true);
+    const SEG = { mejor: '🙂', igual: '😐', peor: '😣' };
+    cuerpo = `<button class="btn full" id="nuevo" style="margin-bottom:12px">+ Anotar un malestar</button>
+      <div class="card">${regs.map((r) => {
+        const dias = difDias(r.datos.fin || hoy, r.fecha) + (r.datos.fin ? 0 : 1);
+        const seg = Object.entries(r.datos.seg || {}).sort().map(([, v]) => SEG[v] || '').join('');
+        return `<div class="lista-item" data-ed="${r.id}" style="cursor:pointer"><small>${fechaCorta(r.fecha)} · ${r.datos.fin ? `${Math.max(dias, 1)} ${dias === 1 ? 'día' : 'días'}` : '<b>en curso</b>'}${r.datos.temp ? ' · ' + esc(r.datos.temp) + ' °C' : ''}${seg ? ' · ' + seg : ''}</small>
+          <div>${esc((r.datos.sintomas || []).join(', ') || 'Malestar')}</div>${r.datos.nota ? `<div><small>${esc(r.datos.nota.slice(0, 100))}</small></div>` : ''}</div>`;
+      }).join('') || '<p class="mut">Sin registros. Cuando te sientas mal, anótalo desde Hoy.</p>'}</div>`;
+    setTimeout(() => {
+      $('#nuevo').onclick = () => formMalestar();
+      document.querySelectorAll('[data-ed]').forEach((el) => (el.onclick = () => formMalestar(regs.find((r) => r.id == el.dataset.ed))));
     });
   } else if (sub === 'episodio') {
     const regs = await registros('episodio');
