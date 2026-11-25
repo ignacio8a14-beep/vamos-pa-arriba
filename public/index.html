@@ -1492,6 +1492,7 @@ async function vistaHoy() {
     const n = Number(el.dataset.a);
     await marcarDia(hoy, { agua: (d.agua || 0) === n ? n - 1 : n }); vistaHoy();
   }));
+  document.querySelectorAll('[data-seg]').forEach((el) => (el.onclick = () => seguirMalestar(el.dataset.seg)));
   document.querySelectorAll('[data-an]').forEach((el) => (el.onclick = async () => {
     await marcarDia(hoy, { animo: Number(el.dataset.an) }); vistaHoy();
   }));
